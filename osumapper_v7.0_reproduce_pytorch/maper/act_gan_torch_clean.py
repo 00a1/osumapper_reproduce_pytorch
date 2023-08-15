@@ -394,7 +394,8 @@ class MixedModel(nn.Module):
         self.discriminator = discriminator
 
     def forward(self, inp):
-        interm1 = self.generator(inp)
+        inp_tensor = torch.from_numpy(inp)# fixed TypeError: linear(): argument 'input' (position 1) must be Tensor, not numpy.ndarray
+        interm1 = self.generator(inp_tensor)
         interm2 = self.mapping_layer(interm1)
         end = self.discriminator(interm2)
         return interm1, interm2, end
