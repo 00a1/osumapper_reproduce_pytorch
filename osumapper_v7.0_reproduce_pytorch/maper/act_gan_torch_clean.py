@@ -10,8 +10,8 @@ from rhythm_loader import read_map_predictions
 from losses_torch import GenerativeCustomLoss, BoxCustomLoss, AlwaysZeroCustomLoss
 from plot_tools import MyLine
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# print(device)
 
 GAN_PARAMS = {
     "divisor" : 4,
@@ -379,7 +379,6 @@ class GenerativeModel(nn.Module):
         self.output_layer = nn.Linear(128, out_params)
 
     def forward(self, x):
-        x = x.to(self.layer1.weight.device)  # Move input tensor to the same device as the model's weights
         x1 = torch.relu(self.layer1(x))
         x2 = torch.relu(self.layer2(x1))
         x3 = torch.tanh(self.layer3(x2))
@@ -408,13 +407,17 @@ def make_models():
     extvar["length_multiplier"] = 1
     extvar["next_from_slider_end"] = GAN_PARAMS["next_from_slider_end"]
 
-    classifier_model = ClassifierModel(special_train_data.shape[2]).to(device)
+    # classifier_model = ClassifierModel(special_train_data.shape[2]).to(device)
+    classifier_model = ClassifierModel(special_train_data.shape[2])
     note_group_size = GAN_PARAMS["note_group_size"]
     g_input_size = GAN_PARAMS["g_input_size"]
 
-    gmodel = GenerativeModel(g_input_size, note_group_size * 4).to(device)
-    mapping_layer = PyTorchCustomMappingLayer(extvar).to(device)
-    mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size).to(device)
+    # gmodel = GenerativeModel(g_input_size, note_group_size * 4).to(device)
+    # mapping_layer = PyTorchCustomMappingLayer(extvar).to(device)
+    # mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size).to(device)
+    gmodel = GenerativeModel(g_input_size, note_group_size * 4)
+    mapping_layer = PyTorchCustomMappingLayer(extvar)
+    mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size)
     # Set the discriminator to be untrainable
     for param in mmodel.discriminator.parameters():
         param.requires_grad = False
