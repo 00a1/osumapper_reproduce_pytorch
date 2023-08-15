@@ -379,6 +379,7 @@ class GenerativeModel(nn.Module):
         self.output_layer = nn.Linear(128, out_params)
 
     def forward(self, x):
+        x = x.to(self.layer1.weight.dtype)  # Convert x to the same dtype as layer weights
         x1 = torch.relu(self.layer1(x))
         x2 = torch.relu(self.layer2(x1))
         x3 = torch.tanh(self.layer3(x2))
