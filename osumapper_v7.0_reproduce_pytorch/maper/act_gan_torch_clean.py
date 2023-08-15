@@ -576,7 +576,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             optimizer_c.zero_grad()
             output2 = discriminator(actual_train_data)
             c_loss = criterion(output2, actual_train_labels)
-            c_loss.backward()
+            c_loss.backward(retain_graph=True)
             optimizer_c.step()
 
         print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss, c_loss))
