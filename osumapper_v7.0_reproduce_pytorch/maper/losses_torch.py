@@ -25,9 +25,9 @@ class BoxCustomLoss(nn.Module):
 
     def forward(self, y_true, y_pred):
         map_part = y_pred
-        # print("Shape of map_part:", map_part.shape)
-        # return inblock_loss(map_part[0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[4:6], self.loss_border, self.loss_value)
-        return inblock_loss(map_part[:, :, 0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[:, :, 4:6], self.loss_border, self.loss_value)
+        print("Shape of map_part:", map_part.shape)
+        return inblock_loss(map_part[0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[4:6], self.loss_border, self.loss_value)
+        #return inblock_loss(map_part[:, :, 0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[:, :, 4:6], self.loss_border, self.loss_value)
 
 class AlwaysZeroCustomLoss(nn.Module):
     def __init__(self):
