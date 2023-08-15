@@ -516,7 +516,8 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         for _ in range(g_multiplier):
             optimizer_g.zero_grad()
             output = generator(ginput_noise)
-            g_loss = combined_loss(output, glabel, loss_weights)
+            g_loss = criterion(output, glabel)
+            # g_loss = combined_loss(output, glabel, loss_weights) custom loss broken RuntimeError: output with shape [] doesn't match the broadcast shape [1] on line 443
             g_loss.backward()
             optimizer_g.step()
         
