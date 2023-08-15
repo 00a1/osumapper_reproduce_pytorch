@@ -483,7 +483,9 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     discriminator = classifier_model
     # Loss function
     criterion = nn.MSELoss() # Discriminator/Classifier + Generator not MGenerator
-    
+    g_loss1 = AlwaysZeroCustomLoss()
+    g_loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"])
+    g_loss3 = GenerativeCustomLoss()
     # Optimizers
     # optimizer = optim.Adam(model.parameters(), lr=0.002)#0.002 gen
     optimizer_g = optim.Adam(generator.parameters(), lr=0.001)#0.001 mix
@@ -499,6 +501,8 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         # glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
         ginput_noise = torch.rand(g_batch, g_input_size)
         glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
+
+        #try1
         # glabel_combined = torch.cat(glabel, dim=1)  # Concatenate the individual tensors in glabel
         
         #try2
@@ -529,7 +533,11 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         for _ in range(g_multiplier):
             optimizer_g.zero_grad()
             output = generator(ginput_noise)
-            g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
+            loss1 = g_loss1(output, glabel[0]) * loss_weights[0]# add index to output?
+            loss2 = g_loss2(output, glabel[1]) * loss_weights[1]
+            loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
+            g_loss = loss1+loss2+loss3
+            # g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
             # Resize the label tensor to match the size of the output tensor
             # glabel = glabel.expand_as(torch.tensor(output))
             # g_loss = criterion(output, glabel)
