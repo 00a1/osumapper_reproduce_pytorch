@@ -27,7 +27,7 @@ class GenerativeCustomLoss(nn.Module):
     #     classification = y_pred
     #     loss1 = 1 - torch.mean(classification, dim=1)
     #     return loss1
-    
+
     def forward(self, y_true, y_pred):
         classification = y_pred
         if classification.dim() == 1:
@@ -43,7 +43,7 @@ class BoxCustomLoss(nn.Module):
 
     def forward(self, y_true, y_pred):
         map_part = y_pred
-        print("Shape of map_part:", map_part.shape)
+        #print("Shape of map_part:", map_part.shape) # test if shape is 50
         return inblock_loss(map_part[0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[4:6], self.loss_border, self.loss_value)
         #return inblock_loss(map_part[:, :, 0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[:, :, 4:6], self.loss_border, self.loss_value)
 

@@ -17,3 +17,7 @@ https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/m
 - [ ] more models
 - [ ] time to train est
 - [ ] reverse cross-compatibility between tensorflow and Pytorch models
+
+## Why fix
+
+It's newer, faster and easier to modify

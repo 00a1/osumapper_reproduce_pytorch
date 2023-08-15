@@ -579,7 +579,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             c_loss.backward(retain_graph=True)
             optimizer_c.step()
 
-        print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss, c_loss))
+        print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss.item()))
 
         # make a new set of notes
         # res_noise = np.random.random((1, g_input_size))
@@ -627,27 +627,6 @@ def generate_map():
         o.append(z)
     a = np.concatenate(o, axis=0)
     return a
-
-# def generate_map():
-#     """
-#     Generate the map (main function)
-#     dist_multiplier is used here
-#     """
-#     o = []
-#     note_group_size = GAN_PARAMS["note_group_size"]
-#     pos = [torch.randint(100, 412, (2,)), torch.randint(80, 304, (2,))]
-#     models = make_models()
-
-#     timestamps_shape = timestamps.shape[0]
-#     print("# of groups: {}".format(timestamps_shape // note_group_size))
-    
-#     for i in range(timestamps_shape // note_group_size):
-#         z = generate_set_pytorch(models, begin=i * note_group_size, start_pos=pos, length_multiplier=dist_multiplier, group_id=i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32)
-#         pos = z[-1, 0:2]
-#         o.append(z)
-    
-#     a = torch.cat(o, dim=0)
-#     return a
 
 def put_everything_in_the_center():
     o = []
