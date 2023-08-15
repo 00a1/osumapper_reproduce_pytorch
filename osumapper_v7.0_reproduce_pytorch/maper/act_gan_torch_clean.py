@@ -90,17 +90,12 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     You might notice I didn't use np calls in this function at all. Yes, it will cause problems.
     Everything needs to be converted to tf calls instead. Take it in mind if you're editing it.
     """
-    # var_tensor = tf.cast(var_tensor, tf.float32)
     var_tensor = var_tensor.to(torch.float32)
     var_shape = var_tensor.shape
     wall_l = 0.15
     wall_r = 0.85
     x_max = 512
     y_max = 384
-    # out = []
-    # cp = tf.constant([256, 192, 0, 0])
-    # cp = torch.tensor([256, 192, 0, 0], dtype=torch.float32)
-    # phase = 0
 
     # Should be equal to note_group_size
     half_tensor = var_shape[1]//4
@@ -117,29 +112,21 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     else:
         begin_offset = 0
 
-#     note_distances_now = length_multiplier * np.expand_dims(note_distances[begin_offset:begin_offset+half_tensor], axis=0)
-#     note_angles_now = np.expand_dims(note_angles[begin_offset:begin_offset+half_tensor], axis=0)
-
     # Load external arrays as tensors
     relevant_tensors = extvar["relevant_tensors"]
-    relevant_is_slider =      relevant_tensors["is_slider"]
+    relevant_is_slider = relevant_tensors["is_slider"]
     relevant_slider_lengths = relevant_tensors["slider_lengths"]
-    relevant_slider_types =   relevant_tensors["slider_types"]
-    relevant_slider_cos =     relevant_tensors["slider_cos_each"]
-    relevant_slider_sin =     relevant_tensors["slider_sin_each"]
+    relevant_slider_types = relevant_tensors["slider_types"]
+    relevant_slider_cos = relevant_tensors["slider_cos_each"]
+    relevant_slider_sin = relevant_tensors["slider_sin_each"]
     relevant_note_distances = relevant_tensors["note_distances"]
-
-    # note_distances_now = length_multiplier * tf.expand_dims(relevant_note_distances, axis=0)
     note_distances_now = length_multiplier * torch.unsqueeze(relevant_note_distances, dim=0)
 
     # init
-    # l = tf.convert_to_tensor(note_distances_now, dtype="float32")
     l = torch.tensor(note_distances_now, dtype=torch.float32)
-    sl = l * 0.7
 
     cos_list = var_tensor[:, 0:half_tensor * 2]
     sin_list = var_tensor[:, half_tensor * 2:]
-    # len_list = tf.sqrt(tf.square(cos_list) + tf.square(sin_list))
     len_list = torch.sqrt(torch.square(cos_list) + torch.square(sin_list))
     cos_list = cos_list / len_list
     sin_list = sin_list / len_list
@@ -148,15 +135,11 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     wall_r = 0.95 * x_max - l * 0.5
     wall_t = 0.05 * y_max + l * 0.5
     wall_b = 0.95 * y_max - l * 0.5
-#     rerand = tf.cast(tf.greater(l, y_max / 2), tf.float32);
-#     not_rerand = tf.cast(tf.less_equal(l, y_max / 2), tf.float32);
 
     tick_diff = extvar["tick_diff"]
 
     # max_ticks_for_ds is an int variable, converted to float to avoid potential type error
-    # use_ds = tf.expand_dims(tf.cast(tf.less_equal(tick_diff, extvar["max_ticks_for_ds"]), tf.float32), axis=0)
     use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32), dim=0)
-
 
     # rerand = not use distance snap
     rerand = 1 - use_ds
@@ -164,15 +147,6 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
 
     next_from_slider_end = extvar["next_from_slider_end"]
 
-    # Starting position
-    # if "start_pos" in extvar:
-    #     _pre_px = extvar["start_pos"][0]
-    #     _pre_py = extvar["start_pos"][1]
-    #     _px = tf.cast(_pre_px, tf.float32)
-    #     _py = tf.cast(_pre_py, tf.float32)
-    # else:
-    #     _px = tf.cast(256, tf.float32)
-    #     _py = tf.cast(192, tf.float32)
     if "start_pos" in extvar:
         _pre_px = extvar["start_pos"][0]
         _pre_py = extvar["start_pos"][1]
@@ -183,13 +157,10 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
         _py = torch.tensor(192, dtype=torch.float32)
 
     # this is not important since the first position starts at _ppos + Δpos
-    # _x = tf.cast(256, tf.float32)
-    # _y = tf.cast(192, tf.float32)
     _x = torch.tensor(256, dtype=torch.float32)
     _y = torch.tensor(192, dtype=torch.float32)
 
     # Use a buffer to save output
-    # outputs = tf.TensorArray(tf.float32, half_tensor)
     outputs = []
 
     for k in range(half_tensor):
@@ -203,12 +174,6 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
         delta_value_y = l[:, k] * sin_list[:, k]
 
         # It is tensor calculation batched 8~32 each call, so if/else do not work here.
-        # wall_value_l =    tf.cast(tf.less(_px, wall_l[:, k]), tf.float32)
-        # wall_value_r =    tf.cast(tf.greater(_px, wall_r[:, k]), tf.float32)
-        # wall_value_xmid = tf.cast(tf.greater(_px, wall_l[:, k]), tf.float32) * tf.cast(tf.less(_px, wall_r[:, k]), tf.float32)
-        # wall_value_t =    tf.cast(tf.less(_py, wall_t[:, k]), tf.float32)
-        # wall_value_b =    tf.cast(tf.greater(_py, wall_b[:, k]), tf.float32)
-        # wall_value_ymid = tf.cast(tf.greater(_py, wall_t[:, k]), tf.float32) * tf.cast(tf.less(_py, wall_b[:, k]), tf.float32)
         wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32)
         wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32)
         wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32))
@@ -216,19 +181,12 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
         wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32)
         wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32))
 
-        # x_delta = tf.abs(delta_value_x) * wall_value_l - tf.abs(delta_value_x) * wall_value_r + delta_value_x * wall_value_xmid
-        # y_delta = tf.abs(delta_value_y) * wall_value_t - tf.abs(delta_value_y) * wall_value_b + delta_value_y * wall_value_ymid
         x_delta = torch.abs(delta_value_x) * wall_value_l - torch.abs(delta_value_x) * wall_value_r + delta_value_x * wall_value_xmid
         y_delta = torch.abs(delta_value_y) * wall_value_t - torch.abs(delta_value_y) * wall_value_b + delta_value_y * wall_value_ymid
 
         # rerand_* if not using distance snap, (_p* + *_delta) if using distance snap
         _x = rerand[:, k] * rerand_x + not_rerand[:, k] * (_px + x_delta)
         _y = rerand[:, k] * rerand_y + not_rerand[:, k] * (_py + y_delta)
-        # _x = rerand_x;
-        # _y = rerand_y;
-        # _x = _px + x_delta;
-        # _y = _py + y_delta;
-
         # Distance snap end
 
         # calculate output vector
@@ -246,9 +204,6 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
         _oa = _a * scos - _b * ssin
         _ob = _a * ssin + _b * scos
 
-        # cp_slider = tf.transpose(tf.stack([_x / x_max, _y / y_max, _oa, _ob, (_x + _a * sln) / x_max, (_y + _b * sln) / y_max]))
-        # _px_slider = tf.cond(next_from_slider_end, lambda: _x + _a * sln, lambda: _x)
-        # _py_slider = tf.cond(next_from_slider_end, lambda: _y + _b * sln, lambda: _y)
         cp_slider = torch.stack([_x / x_max, _y / y_max, _oa, _ob, (_x + _a * sln) / x_max, (_y + _b * sln) / y_max]).T
         _px_slider = torch.where(next_from_slider_end, _x + _a * sln, _x)
         _py_slider = torch.where(next_from_slider_end, _y + _b * sln, _y)
@@ -256,26 +211,19 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
         # circle part
         _a = rerand[:, k] * cos_list[:, k + half_tensor] + not_rerand[:, k] * cos_list[:, k]
         _b = rerand[:, k] * sin_list[:, k + half_tensor] + not_rerand[:, k] * sin_list[:, k]
-        # _a = cos_list[:, k + half_tensor]
-        # _b = sin_list[:, k + half_tensor]
 
-        # cp_circle = tf.transpose(tf.stack([_x / x_max, _y / y_max, _a, _b, _x / x_max, _y / y_max]))
         cp_circle = torch.stack([_x / x_max, _y / y_max, _a, _b, _x / x_max, _y / y_max]).T
         _px_circle = _x
         _py_circle = _y
 
         # Outputs are scaled to [0,1] region
-        # outputs = outputs.write(k, tf.where(relevant_is_slider[k], cp_slider, cp_circle))
         output_value = torch.where(relevant_is_slider[k], cp_slider, cp_circle)
         outputs.append(output_value)
 
         # Set starting point for the next circle/slider
-        # _px = tf.where(tf.cast(relevant_is_slider[k], tf.bool), _px_slider, _px_circle)
-        # _py = tf.where(tf.cast(relevant_is_slider[k], tf.bool), _py_slider, _py_circle)
         _px = torch.where(relevant_is_slider[k], _px_slider, _px_circle)
         _py = torch.where(relevant_is_slider[k], _py_slider, _py_circle)
 
-    # return tf.transpose(outputs.stack(), [1, 0, 2])
     return torch.stack(outputs).permute(1, 0, 2)
 
 class PyTorchCustomMappingLayer(nn.Module):
@@ -289,7 +237,6 @@ class PyTorchCustomMappingLayer(nn.Module):
         self.extvar_lmul = nn.Parameter(torch.tensor([extvar["length_multiplier"]], dtype=torch.float32), requires_grad=False)
         self.extvar_nfse = nn.Parameter(torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool), requires_grad=False)
         self.extvar_mtfd = nn.Parameter(torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32), requires_grad=False)
-        # self.note_group_size = note_group_size
         self.note_group_size = GAN_PARAMS["note_group_size"]
 
         self.extvar_spos = nn.Parameter(torch.zeros(2, dtype=torch.float32), requires_grad=False)
@@ -379,7 +326,6 @@ class GenerativeModel(nn.Module):
         self.output_layer = nn.Linear(128, out_params)
 
     def forward(self, x):
-        #x = x.to(self.layer1.weight.dtype)  # Convert x to the same dtype as layer weights
         x1 = torch.relu(self.layer1(x))
         x2 = torch.relu(self.layer2(x1))
         x3 = torch.tanh(self.layer3(x2))
@@ -435,14 +381,8 @@ def reset_model_weights(models):
     mmodel.load_state_dict(weights)
 
 # loss function for mmodel
-losses = [AlwaysZeroCustomLoss(), BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"]), GenerativeCustomLoss()]
+# losses = [AlwaysZeroCustomLoss(), BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"]), GenerativeCustomLoss()]
 loss_weights = [1e-8, GAN_PARAMS["box_loss_weight"], 1]
-def combined_loss(outputs, targets, loss_weights):
-    total_loss = 0
-    for i, loss_fn in enumerate(losses):
-        total_loss += loss_weights[i] * loss_fn(outputs[i], targets[i])
-        #total_loss += criterion[i](output[i]) * loss_weights[i]# other version
-    return total_loss
 
 #https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/gan/gan.py
 #https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
@@ -481,11 +421,12 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     _gmodel, _mapping_layer, classifier_model, mmodel, _default_weights = models
     generator = mmodel
     discriminator = classifier_model
-    # Loss function
+    # Loss functions
     criterion = nn.MSELoss() # Discriminator/Classifier + Generator not MGenerator
     g_loss1 = AlwaysZeroCustomLoss()
     g_loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"])
     g_loss3 = GenerativeCustomLoss()
+
     # Optimizers
     # optimizer = optim.Adam(model.parameters(), lr=0.002)#0.002 gen
     optimizer_g = optim.Adam(generator.parameters(), lr=0.001)#0.001 mix
@@ -497,30 +438,14 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     
     for i in range(max_epoch):
 
-        # ginput_noise = np.random.random((g_batch, g_input_size))
-        # glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
         ginput_noise = torch.rand(g_batch, g_input_size)
         # glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]# old
         glabel = [
             torch.zeros((g_batch, note_group_size * 4), requires_grad=True),
             torch.ones((g_batch,), requires_grad=True),
             torch.ones((g_batch,), requires_grad=True)
-        ]#new
-        #try1
-        # glabel_combined = torch.cat(glabel, dim=1)  # Concatenate the individual tensors in glabel
+        ]
         
-        #try2
-        # glabel_part1 = torch.zeros((g_batch, note_group_size * 4))
-        # glabel_part2 = torch.ones((g_batch, 1))  # Adjust the shape to match the desired concatenation dimension
-        # glabel_combined = torch.cat([glabel_part1, glabel_part2], dim=1)
-
-        #try3
-        # Create the label tensor with the desired structure
-        # zeros_tensor = torch.zeros((g_batch, note_group_size * 4))
-        # ones_tensor = torch.ones((g_batch,))
-        # glabel = torch.cat((zeros_tensor, ones_tensor.unsqueeze(1), ones_tensor.unsqueeze(1)), dim=1)
-
-
         # -----------------
         #  Train Generator
         # -----------------
@@ -530,6 +455,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             # g_loss = criterion(output, glabel)
             # g_loss.backward()
             # optimizer_g.step()
+
 
         # -----------------
         #  Train MGenerator
@@ -542,10 +468,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
             g_loss = loss1+loss2+loss3
             # g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
-            # Resize the label tensor to match the size of the output tensor
-            # glabel = glabel.expand_as(torch.tensor(output))
             # g_loss = criterion(output, glabel)
-            # g_loss = combined_loss(output, glabel, loss_weights) custom loss broken RuntimeError: output with shape [] doesn't match the broadcast shape [1] on line 443
             g_loss.backward()
             optimizer_g.step()
         
@@ -558,14 +481,10 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
         # random numbers as negative samples
         # special_train_data.shape[2] == 6
-        # randfalse_maps = np.random.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
-        # randfalse_labels = np.zeros(c_randfalse_batch)
         randfalse_maps = torch.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
         randfalse_labels = torch.zeros(c_randfalse_batch)
 
         rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
-        # actual_train_data = np.concatenate((new_false_maps, randfalse_maps, special_train_data[rn]), axis=0)
-        # actual_train_labels = np.concatenate((new_false_labels, randfalse_labels, special_train_labels[rn]), axis=0)
         actual_train_data = torch.cat((new_false_maps, randfalse_maps, torch.tensor(special_train_data[rn], dtype=torch.float32)), dim=0)
         actual_train_labels = torch.cat((new_false_labels, randfalse_labels, torch.tensor(special_train_labels[rn], dtype=torch.float32)), dim=0)
 
@@ -579,10 +498,9 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             c_loss.backward(retain_graph=True)
             optimizer_c.step()
 
-        print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss.item()))
+        print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss))# g_loss might be broken
 
         # make a new set of notes
-        # res_noise = np.random.random((1, g_input_size))
         res_noise = torch.rand(1, g_input_size)
         _resgenerated, res_map, _resclass = generator(res_noise)
         if plot_map:
@@ -590,11 +508,6 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
         # early return if found a good solution
         # good is (inside the map boundary)
-        # if i >= good_epoch:
-        #     current_map = res_map
-        #     if inblock_trueness(current_map[:, :, 0:2]).numpy()[0] == 0 and inblock_trueness(current_map[:, :, 4:6]).numpy()[0] == 0:
-        #         break
-
         if i >= good_epoch:
             current_map = res_map
             if inblock_trueness(current_map[:, :, 0:2]).item() == 0 and inblock_trueness(current_map[:, :, 4:6]).item() == 0:
@@ -602,7 +515,6 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
     if plot_map:
         for i in range(3): # from our testing, any random input generates nearly the same map
-            # plot_noise = np.random.random((1, g_input_size))
             plot_noise = torch.rand(1, g_input_size)
             _plotgenerated, plot_mapped, _plotclass = generator(plot_noise)
             plot_current_map(torch.tensor(plot_mapped, dtype=torch.float32))
