@@ -3,10 +3,15 @@
 import torch
 import torch.nn as nn
 
+# def inblock_loss(vg, border, value):
+#     wall_var_l = torch.where(vg < border, (value - vg)**2, torch.zeros_like(vg))
+#     wall_var_r = torch.where(vg > 1 - border, (vg - (1 - value))**2, torch.zeros_like(vg))
+#     return torch.mean(torch.mean(wall_var_l + wall_var_r, dim=2), dim=1)
+
 def inblock_loss(vg, border, value):
     wall_var_l = torch.where(vg < border, (value - vg)**2, torch.zeros_like(vg))
     wall_var_r = torch.where(vg > 1 - border, (vg - (1 - value))**2, torch.zeros_like(vg))
-    return torch.mean(torch.mean(wall_var_l + wall_var_r, dim=2), dim=1)
+    return torch.mean(torch.mean(wall_var_l + wall_var_r, dim=1), dim=0)  # Reduce along dimension 1
 
 class GenerativeCustomLoss(nn.Module):
     def __init__(self):
