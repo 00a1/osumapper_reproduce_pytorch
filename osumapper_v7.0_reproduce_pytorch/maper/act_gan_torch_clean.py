@@ -9,6 +9,7 @@ import os
 from rhythm_loader import read_map_predictions
 from losses_torch import GenerativeCustomLoss, BoxCustomLoss, AlwaysZeroCustomLoss
 from plot_tools import MyLine
+from tqdm import tqdm
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # print(device)
@@ -532,7 +533,7 @@ def generate_map():
     models = make_models()
 
     print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
-    for i in range(timestamps.shape[0] // note_group_size):
+    for i in tqdm(range(timestamps.shape[0] // note_group_size)):
         z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32) #np.array([512, 384, 1, 1, 512, 384])
         z = z.detach().numpy()  # Use detach() before calling numpy()
         pos = z[-1, 0:2]
