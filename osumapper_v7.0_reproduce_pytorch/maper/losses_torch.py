@@ -23,8 +23,15 @@ class GenerativeCustomLoss(nn.Module):
     def __init__(self):
         super(GenerativeCustomLoss, self).__init__()
 
+    # def forward(self, y_true, y_pred):
+    #     classification = y_pred
+    #     loss1 = 1 - torch.mean(classification, dim=1)
+    #     return loss1
+    
     def forward(self, y_true, y_pred):
         classification = y_pred
+        if classification.dim() == 1:
+            classification = classification.unsqueeze(0)  # Convert to a 2D tensor if it's 1D
         loss1 = 1 - torch.mean(classification, dim=1)
         return loss1
 
