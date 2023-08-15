@@ -379,7 +379,7 @@ class GenerativeModel(nn.Module):
         self.output_layer = nn.Linear(128, out_params)
 
     def forward(self, x):
-        x = x.to(self.layer1.weight.dtype)  # Convert x to the same dtype as layer weights
+        #x = x.to(self.layer1.weight.dtype)  # Convert x to the same dtype as layer weights
         x1 = torch.relu(self.layer1(x))
         x2 = torch.relu(self.layer2(x1))
         x3 = torch.tanh(self.layer3(x2))
@@ -395,8 +395,7 @@ class MixedModel(nn.Module):
         self.discriminator = discriminator
 
     def forward(self, inp):
-        inp_tensor = torch.from_numpy(inp)# fixed TypeError: linear(): argument 'input' (position 1) must be Tensor, not numpy.ndarray
-        interm1 = self.generator(inp_tensor)
+        interm1 = self.generator(inp)
         interm2 = self.mapping_layer(interm1)
         end = self.discriminator(interm2)
         return interm1, interm2, end
@@ -448,6 +447,7 @@ def combined_loss(outputs, targets, loss_weights):
 #https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/gan/gan.py
 #https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
 # adversarial_loss.cuda() #https://discuss.pytorch.org/t/why-criterion-cuda-is-not-needed-but-model-cuda-is/17410
+# fix np to torch +
 def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, length_multiplier=1, plot_map=True):
     """
     Generate one set (note_group_size) of notes.
@@ -495,8 +495,10 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     
     for i in range(max_epoch):
 
-        ginput_noise = np.random.random((g_batch, g_input_size))
-        glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
+        # ginput_noise = np.random.random((g_batch, g_input_size))
+        # glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
+        ginput_noise = torch.rand(g_batch, g_input_size)
+        glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
 
         # -----------------
         #  Train Generator
@@ -518,19 +520,25 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             g_loss.backward()
             optimizer_g.step()
         
-        pred_noise = np.random.random((c_false_batch, g_input_size))
+        # pred_noise = np.random.random((c_false_batch, g_input_size))
+        pred_noise = torch.rand(c_false_batch, g_input_size)
         pred_input = pred_noise
         _predicted_maps_data, new_false_maps, _predclass = generator(pred_input)
-        new_false_labels = np.zeros(c_false_batch)
+        # new_false_labels = np.zeros(c_false_batch)
+        new_false_labels = torch.zeros(c_false_batch)
 
         # random numbers as negative samples
         # special_train_data.shape[2] == 6
-        randfalse_maps = np.random.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
-        randfalse_labels = np.zeros(c_randfalse_batch)
+        # randfalse_maps = np.random.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
+        # randfalse_labels = np.zeros(c_randfalse_batch)
+        randfalse_maps = torch.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
+        randfalse_labels = torch.zeros(c_randfalse_batch)
 
         rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
-        actual_train_data = np.concatenate((new_false_maps, randfalse_maps, special_train_data[rn]), axis=0)
-        actual_train_labels = np.concatenate((new_false_labels, randfalse_labels, special_train_labels[rn]), axis=0)
+        # actual_train_data = np.concatenate((new_false_maps, randfalse_maps, special_train_data[rn]), axis=0)
+        # actual_train_labels = np.concatenate((new_false_labels, randfalse_labels, special_train_labels[rn]), axis=0)
+        actual_train_data = torch.cat((new_false_maps, randfalse_maps, special_train_data[rn]), dim=0)
+        actual_train_labels = torch.cat((new_false_labels, randfalse_labels, special_train_labels[rn]), dim=0)
 
         # ---------------------
         #  Train Discriminator
@@ -545,21 +553,28 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss, c_loss))
 
         # make a new set of notes
-        res_noise = np.random.random((1, g_input_size))
+        # res_noise = np.random.random((1, g_input_size))
+        res_noise = torch.rand(1, g_input_size)
         _resgenerated, res_map, _resclass = generator(res_noise)
         if plot_map:
             plot_current_map(torch.tensor(res_map, dtype=torch.float32))
 
         # early return if found a good solution
         # good is (inside the map boundary)
+        # if i >= good_epoch:
+        #     current_map = res_map
+        #     if inblock_trueness(current_map[:, :, 0:2]).numpy()[0] == 0 and inblock_trueness(current_map[:, :, 4:6]).numpy()[0] == 0:
+        #         break
+
         if i >= good_epoch:
             current_map = res_map
-            if inblock_trueness(current_map[:, :, 0:2]).numpy()[0] == 0 and inblock_trueness(current_map[:, :, 4:6]).numpy()[0] == 0:
+            if inblock_trueness(current_map[:, :, 0:2]).item() == 0 and inblock_trueness(current_map[:, :, 4:6]).item() == 0:
                 break
 
     if plot_map:
         for i in range(3): # from our testing, any random input generates nearly the same map
-            plot_noise = np.random.random((1, g_input_size))
+            # plot_noise = np.random.random((1, g_input_size))
+            plot_noise = torch.rand(1, g_input_size)
             _plotgenerated, plot_mapped, _plotclass = generator(plot_noise)
             plot_current_map(torch.tensor(plot_mapped, dtype=torch.float32))
 
