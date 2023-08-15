@@ -15,6 +15,7 @@ from tqdm import tqdm
 # print(device)
 
 GAN_PARAMS = {
+    "verbose" : False,
     "divisor" : 4,
     "good_epoch" : 12,
     "max_epoch" : 30,
@@ -499,7 +500,8 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             c_loss.backward(retain_graph=True)
             optimizer_c.step()
 
-        print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss))# g_loss might be broken
+        if GAN_PARAMS["verbose"]:
+            print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss))# g_loss might be broken
 
         # make a new set of notes
         res_noise = torch.rand(1, g_input_size)
