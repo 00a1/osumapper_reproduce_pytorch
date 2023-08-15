@@ -500,8 +500,12 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         # ginput_noise = np.random.random((g_batch, g_input_size))
         # glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
         ginput_noise = torch.rand(g_batch, g_input_size)
-        glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
-
+        # glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]# old
+        glabel = [
+            torch.zeros((g_batch, note_group_size * 4), requires_grad=True),
+            torch.ones((g_batch,), requires_grad=True),
+            torch.ones((g_batch,), requires_grad=True)
+        ]#new
         #try1
         # glabel_combined = torch.cat(glabel, dim=1)  # Concatenate the individual tensors in glabel
         
