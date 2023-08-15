@@ -498,7 +498,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         # ginput_noise = np.random.random((g_batch, g_input_size))
         # glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
         ginput_noise = torch.rand(g_batch, g_input_size)
-        # glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
+        glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
         # glabel_combined = torch.cat(glabel, dim=1)  # Concatenate the individual tensors in glabel
         
         #try2
@@ -508,9 +508,9 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
         #try3
         # Create the label tensor with the desired structure
-        zeros_tensor = torch.zeros((g_batch, note_group_size * 4))
-        ones_tensor = torch.ones((g_batch,))
-        glabel = torch.cat((zeros_tensor, ones_tensor.unsqueeze(1), ones_tensor.unsqueeze(1)), dim=1)
+        # zeros_tensor = torch.zeros((g_batch, note_group_size * 4))
+        # ones_tensor = torch.ones((g_batch,))
+        # glabel = torch.cat((zeros_tensor, ones_tensor.unsqueeze(1), ones_tensor.unsqueeze(1)), dim=1)
 
 
         # -----------------
@@ -529,9 +529,10 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         for _ in range(g_multiplier):
             optimizer_g.zero_grad()
             output = generator(ginput_noise)
+            g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
             # Resize the label tensor to match the size of the output tensor
-            glabel = glabel.expand_as(torch.tensor(output))
-            g_loss = criterion(output, glabel)
+            # glabel = glabel.expand_as(torch.tensor(output))
+            # g_loss = criterion(output, glabel)
             # g_loss = combined_loss(output, glabel, loss_weights) custom loss broken RuntimeError: output with shape [] doesn't match the broadcast shape [1] on line 443
             g_loss.backward()
             optimizer_g.step()
