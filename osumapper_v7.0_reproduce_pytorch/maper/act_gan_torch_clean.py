@@ -498,8 +498,14 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         # ginput_noise = np.random.random((g_batch, g_input_size))
         # glabel = [np.zeros((g_batch, note_group_size * 4)), np.ones((g_batch,)), np.ones((g_batch,))]
         ginput_noise = torch.rand(g_batch, g_input_size)
-        glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
-        glabel_combined = torch.cat(glabel, dim=1)  # Concatenate the individual tensors in glabel
+        # glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
+        # glabel_combined = torch.cat(glabel, dim=1)  # Concatenate the individual tensors in glabel
+        
+        #try2
+        glabel_part1 = torch.zeros((g_batch, note_group_size * 4))
+        glabel_part2 = torch.ones((g_batch, 1))  # Adjust the shape to match the desired concatenation dimension
+        glabel_combined = torch.cat([glabel_part1, glabel_part2], dim=1)
+
 
         # -----------------
         #  Train Generator
