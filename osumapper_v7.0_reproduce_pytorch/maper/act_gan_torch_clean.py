@@ -531,7 +531,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             output = generator(ginput_noise)
             # Resize the label tensor to match the size of the output tensor
             glabel = glabel.expand_as(output)
-            g_loss = criterion(output, glabel)
+            g_loss = criterion(output, torch.tensor(glabel))
             # g_loss = combined_loss(output, glabel, loss_weights) custom loss broken RuntimeError: output with shape [] doesn't match the broadcast shape [1] on line 443
             g_loss.backward()
             optimizer_g.step()
