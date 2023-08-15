@@ -566,8 +566,8 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
         # actual_train_data = np.concatenate((new_false_maps, randfalse_maps, special_train_data[rn]), axis=0)
         # actual_train_labels = np.concatenate((new_false_labels, randfalse_labels, special_train_labels[rn]), axis=0)
-        actual_train_data = torch.cat((new_false_maps, randfalse_maps, special_train_data[rn]), dim=0)
-        actual_train_labels = torch.cat((new_false_labels, randfalse_labels, special_train_labels[rn]), dim=0)
+        actual_train_data = torch.cat((new_false_maps, randfalse_maps, torch.tensor(special_train_data[rn], dtype=torch.float32)), dim=0)
+        actual_train_labels = torch.cat((new_false_labels, randfalse_labels, torch.tensor(special_train_labels[rn], dtype=torch.float32)), dim=0)
 
         # ---------------------
         #  Train Discriminator
