@@ -609,25 +609,6 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
     return res_map.squeeze()
 
-def generate_map():
-    """
-    Generate the map (main function)
-    dist_multiplier is used here
-    """
-    o = []
-    note_group_size = GAN_PARAMS["note_group_size"]
-    pos = [np.random.randint(100, 412), np.random.randint(80, 304)]
-    models = make_models()
-
-    print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
-    for i in range(timestamps.shape[0] // note_group_size):
-        z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * np.array([512, 384, 1, 1, 512, 384])
-        z = z.detach().numpy()  # Use detach() before calling numpy()
-        pos = z[-1, 0:2]
-        o.append(z)
-    a = np.concatenate(o, axis=0)
-    return a
-
 # def generate_map():
 #     """
 #     Generate the map (main function)
@@ -635,19 +616,38 @@ def generate_map():
 #     """
 #     o = []
 #     note_group_size = GAN_PARAMS["note_group_size"]
-#     pos = [torch.randint(100, 412, (2,)), torch.randint(80, 304, (2,))]
+#     pos = [np.random.randint(100, 412), np.random.randint(80, 304)]
 #     models = make_models()
 
-#     timestamps_shape = timestamps.shape[0]
-#     print("# of groups: {}".format(timestamps_shape // note_group_size))
-    
-#     for i in range(timestamps_shape // note_group_size):
-#         z = generate_set_pytorch(models, begin=i * note_group_size, start_pos=pos, length_multiplier=dist_multiplier, group_id=i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32)
+#     print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
+#     for i in range(timestamps.shape[0] // note_group_size):
+#         z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * np.array([512, 384, 1, 1, 512, 384])
+#         z = z.detach().numpy()  # Use detach() before calling numpy()
 #         pos = z[-1, 0:2]
 #         o.append(z)
-    
-#     a = torch.cat(o, dim=0)
+#     a = np.concatenate(o, axis=0)
 #     return a
+
+def generate_map():
+    """
+    Generate the map (main function)
+    dist_multiplier is used here
+    """
+    o = []
+    note_group_size = GAN_PARAMS["note_group_size"]
+    pos = [torch.randint(100, 412, (2,)), torch.randint(80, 304, (2,))]
+    models = make_models()
+
+    timestamps_shape = timestamps.shape[0]
+    print("# of groups: {}".format(timestamps_shape // note_group_size))
+    
+    for i in range(timestamps_shape // note_group_size):
+        z = generate_set_pytorch(models, begin=i * note_group_size, start_pos=pos, length_multiplier=dist_multiplier, group_id=i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32)
+        pos = z[-1, 0:2]
+        o.append(z)
+    
+    a = torch.cat(o, dim=0)
+    return a
 
 def put_everything_in_the_center():
     o = []
