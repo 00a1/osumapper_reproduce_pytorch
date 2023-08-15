@@ -4,7 +4,7 @@
 
 https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/main/osumapper_v7.0_reproduce_pytorch/maper/Colab_pytorch.ipynb
 
-![Structure diagram](https://imgur.com/QfImd1k)
+![Structure diagram](https://i.imgur.com/QfImd1k.png)
 
 ## TODO
 
