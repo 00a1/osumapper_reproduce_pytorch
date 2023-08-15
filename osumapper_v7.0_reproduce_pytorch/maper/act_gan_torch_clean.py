@@ -312,7 +312,7 @@ class PyTorchCustomMappingLayer(nn.Module):
 
         self.extvar_begin.data = torch.tensor(extvar["begin"], dtype=torch.int32)
         self.extvar_spos.data = torch.tensor(extvar["start_pos"], dtype=torch.float32)
-        self.extvar_lmul.data = torch.tensor([extvar["length_multiplier"]], dtype=torch.float32)
+        self.extvar_lmul.data = torch.tensor(extvar["length_multiplier"], dtype=torch.float32)# small fix
         self.extvar_nfse.data = torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool)
         self.extvar_mtfd.data = torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32)
         self.extvar_rel.data = torch.tensor([
