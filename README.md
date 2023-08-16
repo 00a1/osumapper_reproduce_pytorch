@@ -12,7 +12,7 @@ https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/m
     - [x] GAN
     - [ ] rhythm model
 - [ ] EZ gui
-- [ ] GPU support
+- [x] GPU support
 - [ ] generate full map sets
 - [ ] more models
 - [ ] time to train est

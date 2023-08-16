@@ -3,6 +3,9 @@
 import torch
 import torch.nn as nn
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# print(device)
+
 # def inblock_loss(vg, border, value):
 #     wall_var_l = torch.where(vg < border, (value - vg)**2, torch.zeros_like(vg))
 #     wall_var_r = torch.where(vg > 1 - border, (vg - (1 - value))**2, torch.zeros_like(vg))
@@ -14,8 +17,8 @@ import torch.nn as nn
 #     return torch.mean(torch.mean(wall_var_l + wall_var_r, dim=1), dim=1)  # Reduce along dimension 1
 
 def inblock_loss(vg, border, value):
-    wall_var_l = torch.where(vg < border, (value - vg)**2, torch.zeros_like(vg))
-    wall_var_r = torch.where(vg > 1 - border, (vg - (1 - value))**2, torch.zeros_like(vg))
+    wall_var_l = torch.where(vg < border, (value - vg)**2, torch.zeros_like(vg, device=device))
+    wall_var_r = torch.where(vg > 1 - border, (vg - (1 - value))**2, torch.zeros_like(vg, device=device))
     return torch.mean(wall_var_l + wall_var_r)
 
 
@@ -52,4 +55,4 @@ class AlwaysZeroCustomLoss(nn.Module):
         super(AlwaysZeroCustomLoss, self).__init__()
 
     def forward(self, y_true, y_pred):
-        return torch.tensor(0.0, dtype=torch.float32)
+        return torch.tensor(0.0, dtype=torch.float32, device=device)

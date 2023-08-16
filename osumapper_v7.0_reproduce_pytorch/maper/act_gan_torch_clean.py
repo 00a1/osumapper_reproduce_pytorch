@@ -11,8 +11,8 @@ from losses_torch import GenerativeCustomLoss, BoxCustomLoss, AlwaysZeroCustomLo
 from plot_tools import MyLine
 from tqdm import tqdm
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# print(device)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
 GAN_PARAMS = {
     "verbose" : False,
@@ -71,8 +71,8 @@ def inblock_trueness(vg):
     """
     Despite the weird name, it checks if all notes and slider tails are within the map boundaries.
     """
-    wall_var_l = torch.tensor(vg < 0, dtype=torch.float32)
-    wall_var_r = torch.tensor(vg > 1, dtype=torch.float32)
+    wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device)
+    wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device)
     return torch.mean(torch.mean(wall_var_l + wall_var_r, dim=2), dim=1)
 
 def construct_map_with_sliders(var_tensor, extvar=[]):
@@ -125,7 +125,7 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     note_distances_now = length_multiplier * torch.unsqueeze(relevant_note_distances, dim=0)
 
     # init
-    l = torch.tensor(note_distances_now, dtype=torch.float32)
+    l = torch.tensor(note_distances_now, dtype=torch.float32, device=device)
 
     cos_list = var_tensor[:, 0:half_tensor * 2]
     sin_list = var_tensor[:, half_tensor * 2:]
@@ -141,7 +141,7 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     tick_diff = extvar["tick_diff"]
 
     # max_ticks_for_ds is an int variable, converted to float to avoid potential type error
-    use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32), dim=0)
+    use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device), dim=0)
 
     # rerand = not use distance snap
     rerand = 1 - use_ds
@@ -152,15 +152,15 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     if "start_pos" in extvar:
         _pre_px = extvar["start_pos"][0]
         _pre_py = extvar["start_pos"][1]
-        _px = torch.tensor(_pre_px, dtype=torch.float32)
-        _py = torch.tensor(_pre_py, dtype=torch.float32)
+        _px = torch.tensor(_pre_px, dtype=torch.float32, device=device)
+        _py = torch.tensor(_pre_py, dtype=torch.float32, device=device)
     else:
-        _px = torch.tensor(256, dtype=torch.float32)
-        _py = torch.tensor(192, dtype=torch.float32)
+        _px = torch.tensor(256, dtype=torch.float32, device=device)
+        _py = torch.tensor(192, dtype=torch.float32, device=device)
 
     # this is not important since the first position starts at _ppos + Δpos
-    _x = torch.tensor(256, dtype=torch.float32)
-    _y = torch.tensor(192, dtype=torch.float32)
+    _x = torch.tensor(256, dtype=torch.float32, device=device)
+    _y = torch.tensor(192, dtype=torch.float32, device=device)
 
     # Use a buffer to save output
     outputs = []
@@ -176,12 +176,12 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
         delta_value_y = l[:, k] * sin_list[:, k]
 
         # It is tensor calculation batched 8~32 each call, so if/else do not work here.
-        wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32)
-        wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32)
-        wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32))
-        wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32)
-        wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32)
-        wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32))
+        wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32, device=device)
+        wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32, device=device)
+        wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32, device=device) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32, device=device))
+        wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32, device=device)
+        wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32, device=device)
+        wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32, device=device) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32, device=device))
 
         x_delta = torch.abs(delta_value_x) * wall_value_l - torch.abs(delta_value_x) * wall_value_r + delta_value_x * wall_value_xmid
         y_delta = torch.abs(delta_value_y) * wall_value_t - torch.abs(delta_value_y) * wall_value_b + delta_value_y * wall_value_ymid
@@ -235,35 +235,35 @@ class PyTorchCustomMappingLayer(nn.Module):
         if output_shape[0] is None:
             output_shape = (special_train_data.shape[1], special_train_data.shape[2])
         self._output_shape = output_shape
-        self.extvar_begin = nn.Parameter(torch.tensor(extvar["begin"], dtype=torch.int32), requires_grad=False)
-        self.extvar_lmul = nn.Parameter(torch.tensor([extvar["length_multiplier"]], dtype=torch.float32), requires_grad=False)
-        self.extvar_nfse = nn.Parameter(torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool), requires_grad=False)
-        self.extvar_mtfd = nn.Parameter(torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32), requires_grad=False)
+        self.extvar_begin = nn.Parameter(torch.tensor(extvar["begin"], dtype=torch.int32, device=device), requires_grad=False)
+        self.extvar_lmul = nn.Parameter(torch.tensor([extvar["length_multiplier"]], dtype=torch.float32, device=device), requires_grad=False)
+        self.extvar_nfse = nn.Parameter(torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool, device=device), requires_grad=False)
+        self.extvar_mtfd = nn.Parameter(torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32, device=device), requires_grad=False)
         self.note_group_size = GAN_PARAMS["note_group_size"]
 
-        self.extvar_spos = nn.Parameter(torch.zeros(2, dtype=torch.float32), requires_grad=False)
-        self.extvar_rel = nn.Parameter(torch.zeros(6, note_group_size, dtype=torch.float32), requires_grad=False)
-        self.extvar_tickdiff = nn.Parameter(torch.zeros(note_group_size, dtype=torch.float32), requires_grad=False)
+        self.extvar_spos = nn.Parameter(torch.zeros(2, dtype=torch.float32, device=device), requires_grad=False)
+        self.extvar_rel = nn.Parameter(torch.zeros(6, note_group_size, dtype=torch.float32, device=device), requires_grad=False)
+        self.extvar_tickdiff = nn.Parameter(torch.zeros(note_group_size, dtype=torch.float32, device=device), requires_grad=False)
 
     def set_extvar(self, extvar):
         self.extvar = extvar
 
         begin_offset = extvar["begin"]
         relevant_tensors = {
-            "is_slider": torch.tensor(is_slider[begin_offset: begin_offset + self.note_group_size], dtype=torch.bool),
-            "slider_lengths": torch.tensor(slider_lengths[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32),
-            "slider_types": torch.tensor(slider_types[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32),
-            "slider_cos_each": torch.tensor(slider_cos_each[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32),
-            "slider_sin_each": torch.tensor(slider_sin_each[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32),
-            "note_distances": torch.tensor(note_distances[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32),
+            "is_slider": torch.tensor(is_slider[begin_offset: begin_offset + self.note_group_size], dtype=torch.bool, device=device),
+            "slider_lengths": torch.tensor(slider_lengths[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32, device=device),
+            "slider_types": torch.tensor(slider_types[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32, device=device),
+            "slider_cos_each": torch.tensor(slider_cos_each[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32, device=device),
+            "slider_sin_each": torch.tensor(slider_sin_each[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32, device=device),
+            "note_distances": torch.tensor(note_distances[begin_offset: begin_offset + self.note_group_size], dtype=torch.float32, device=device),
         }
         self.extvar["relevant_tensors"] = relevant_tensors
 
-        self.extvar_begin.data = torch.tensor(extvar["begin"], dtype=torch.int32)
-        self.extvar_spos.data = torch.tensor(extvar["start_pos"], dtype=torch.float32)
-        self.extvar_lmul.data = torch.tensor(extvar["length_multiplier"], dtype=torch.float32)# small fix
-        self.extvar_nfse.data = torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool)
-        self.extvar_mtfd.data = torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32)
+        self.extvar_begin.data = torch.tensor(extvar["begin"], dtype=torch.int32, device=device)
+        self.extvar_spos.data = torch.tensor(extvar["start_pos"], dtype=torch.float32, device=device)
+        self.extvar_lmul.data = torch.tensor(extvar["length_multiplier"], dtype=torch.float32, device=device)# small fix
+        self.extvar_nfse.data = torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool, device=device)
+        self.extvar_mtfd.data = torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32, device=device)
         self.extvar_rel.data = torch.tensor([
             is_slider[begin_offset: begin_offset + self.note_group_size],
             slider_lengths[begin_offset: begin_offset + self.note_group_size],
@@ -271,10 +271,11 @@ class PyTorchCustomMappingLayer(nn.Module):
             slider_cos_each[begin_offset: begin_offset + self.note_group_size],
             slider_sin_each[begin_offset: begin_offset + self.note_group_size],
             note_distances[begin_offset: begin_offset + self.note_group_size],
-        ], dtype=torch.float32)
+        ], dtype=torch.float32, device=device)
         self.extvar_tickdiff.data = torch.tensor(
             tick_diff[begin_offset: begin_offset + self.note_group_size],
             dtype=torch.float32,
+            device=device,
         )
 
     def forward(self, inputs):
@@ -355,17 +356,18 @@ def make_models():
     extvar["length_multiplier"] = 1
     extvar["next_from_slider_end"] = GAN_PARAMS["next_from_slider_end"]
 
-    # classifier_model = ClassifierModel(special_train_data.shape[2]).to(device)
-    classifier_model = ClassifierModel(special_train_data.shape[2])
+    classifier_model = ClassifierModel(special_train_data.shape[2]).to(device)
+    # classifier_model = ClassifierModel(special_train_data.shape[2])
     note_group_size = GAN_PARAMS["note_group_size"]
     g_input_size = GAN_PARAMS["g_input_size"]
 
-    # gmodel = GenerativeModel(g_input_size, note_group_size * 4).to(device)
-    # mapping_layer = PyTorchCustomMappingLayer(extvar).to(device)
-    # mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size).to(device)
-    gmodel = GenerativeModel(g_input_size, note_group_size * 4)
-    mapping_layer = PyTorchCustomMappingLayer(extvar)
-    mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size)
+    gmodel = GenerativeModel(g_input_size, note_group_size * 4).to(device)
+    mapping_layer = PyTorchCustomMappingLayer(extvar).to(device)
+    mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size).to(device)
+    # gmodel = GenerativeModel(g_input_size, note_group_size * 4)
+    # mapping_layer = PyTorchCustomMappingLayer(extvar)
+    # mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size)
+
     # Set the discriminator to be untrainable
     for param in mmodel.discriminator.parameters():
         param.requires_grad = False
@@ -440,12 +442,12 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     
     for i in range(max_epoch):
 
-        ginput_noise = torch.rand(g_batch, g_input_size)
+        ginput_noise = torch.rand(g_batch, g_input_size, device=device)
         # glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]# old
         glabel = [
-            torch.zeros((g_batch, note_group_size * 4), requires_grad=True),
-            torch.ones((g_batch,), requires_grad=True),
-            torch.ones((g_batch,), requires_grad=True)
+            torch.zeros((g_batch, note_group_size * 4), requires_grad=True, device=device),
+            torch.ones((g_batch,), requires_grad=True, device=device),
+            torch.ones((g_batch,), requires_grad=True, device=device)
         ]
         
         # -----------------
@@ -475,20 +477,20 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             optimizer_g.step()
         
         # pred_noise = np.random.random((c_false_batch, g_input_size))
-        pred_noise = torch.rand(c_false_batch, g_input_size)
+        pred_noise = torch.rand(c_false_batch, g_input_size, device=device)
         pred_input = pred_noise
         _predicted_maps_data, new_false_maps, _predclass = generator(pred_input)
         # new_false_labels = np.zeros(c_false_batch)
-        new_false_labels = torch.zeros(c_false_batch)
+        new_false_labels = torch.zeros(c_false_batch, device=device)
 
         # random numbers as negative samples
         # special_train_data.shape[2] == 6
-        randfalse_maps = torch.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
-        randfalse_labels = torch.zeros(c_randfalse_batch)
+        randfalse_maps = torch.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2], device=device)
+        randfalse_labels = torch.zeros(c_randfalse_batch, device=device)
 
         rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
-        actual_train_data = torch.cat((new_false_maps, randfalse_maps, torch.tensor(special_train_data[rn], dtype=torch.float32)), dim=0)
-        actual_train_labels = torch.cat((new_false_labels, randfalse_labels, torch.tensor(special_train_labels[rn], dtype=torch.float32)), dim=0)
+        actual_train_data = torch.cat((new_false_maps, randfalse_maps, torch.tensor(special_train_data[rn], dtype=torch.float32, device=device)), dim=0)
+        actual_train_labels = torch.cat((new_false_labels, randfalse_labels, torch.tensor(special_train_labels[rn], dtype=torch.float32, device=device)), dim=0)
 
         # ---------------------
         #  Train Discriminator
@@ -504,10 +506,10 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss))# g_loss might be broken
 
         # make a new set of notes
-        res_noise = torch.rand(1, g_input_size)
+        res_noise = torch.rand(1, g_input_size, device=device)
         _resgenerated, res_map, _resclass = generator(res_noise)
         if plot_map:
-            plot_current_map(torch.tensor(res_map, dtype=torch.float32))
+            plot_current_map(torch.tensor(res_map, dtype=torch.float32, device=device))
 
         # early return if found a good solution
         # good is (inside the map boundary)
@@ -518,9 +520,9 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
     if plot_map:
         for i in range(3): # from our testing, any random input generates nearly the same map
-            plot_noise = torch.rand(1, g_input_size)
+            plot_noise = torch.rand(1, g_input_size, device=device)
             _plotgenerated, plot_mapped, _plotclass = generator(plot_noise)
-            plot_current_map(torch.tensor(plot_mapped, dtype=torch.float32))
+            plot_current_map(torch.tensor(plot_mapped, dtype=torch.float32, device=device))
 
     return res_map.squeeze()
 
@@ -536,7 +538,7 @@ def generate_map():
 
     print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
     for i in tqdm(range(timestamps.shape[0] // note_group_size)):
-        z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32) #np.array([512, 384, 1, 1, 512, 384])
+        z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32, device=device) #np.array([512, 384, 1, 1, 512, 384])
         z = z.detach().numpy()  # Use detach() before calling numpy()
         pos = z[-1, 0:2]
         o.append(z)
