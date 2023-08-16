@@ -539,7 +539,7 @@ def generate_map():
     print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
     for i in tqdm(range(timestamps.shape[0] // note_group_size)):
         z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32, device=device) #np.array([512, 384, 1, 1, 512, 384])
-        z = z.detach().numpy()  # Use detach() before calling numpy()
+        z = z.detach().cpu().numpy()  # Use detach() before calling numpy()
         pos = z[-1, 0:2]
         o.append(z)
     a = np.concatenate(o, axis=0)
