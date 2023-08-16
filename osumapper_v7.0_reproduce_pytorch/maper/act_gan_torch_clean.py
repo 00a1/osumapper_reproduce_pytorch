@@ -71,8 +71,8 @@ def inblock_trueness(vg):
     """
     Despite the weird name, it checks if all notes and slider tails are within the map boundaries.
     """
-    wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device)
-    wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device)
+    wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device).clone().detach()
+    wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device).clone().detach()
     return torch.mean(torch.mean(wall_var_l + wall_var_r, dim=2), dim=1)
 
 def construct_map_with_sliders(var_tensor, extvar=[]):
@@ -125,7 +125,8 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     note_distances_now = length_multiplier * torch.unsqueeze(relevant_note_distances, dim=0)
 
     # init
-    l = torch.tensor(note_distances_now, dtype=torch.float32, device=device)
+    # l = torch.tensor(note_distances_now, dtype=torch.float32, device=device)
+    l = note_distances_now.clone().detach().to(device, dtype=torch.float32)
 
     cos_list = var_tensor[:, 0:half_tensor * 2]
     sin_list = var_tensor[:, half_tensor * 2:]
@@ -141,7 +142,8 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     tick_diff = extvar["tick_diff"]
 
     # max_ticks_for_ds is an int variable, converted to float to avoid potential type error
-    use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device), dim=0)
+    # use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device), dim=0)
+    use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device).clone().detach(), dim=0)
 
     # rerand = not use distance snap
     rerand = 1 - use_ds
@@ -152,8 +154,8 @@ def construct_map_with_sliders(var_tensor, extvar=[]):
     if "start_pos" in extvar:
         _pre_px = extvar["start_pos"][0]
         _pre_py = extvar["start_pos"][1]
-        _px = torch.tensor(_pre_px, dtype=torch.float32, device=device)
-        _py = torch.tensor(_pre_py, dtype=torch.float32, device=device)
+        _px = torch.tensor(_pre_px, dtype=torch.float32, device=device).clone().detach()
+        _py = torch.tensor(_pre_py, dtype=torch.float32, device=device).clone().detach()
     else:
         _px = torch.tensor(256, dtype=torch.float32, device=device)
         _py = torch.tensor(192, dtype=torch.float32, device=device)
@@ -264,14 +266,15 @@ class PyTorchCustomMappingLayer(nn.Module):
         self.extvar_lmul.data = torch.tensor(extvar["length_multiplier"], dtype=torch.float32, device=device)# small fix
         self.extvar_nfse.data = torch.tensor(extvar["next_from_slider_end"], dtype=torch.bool, device=device)
         self.extvar_mtfd.data = torch.tensor(GAN_PARAMS["max_ticks_for_ds"], dtype=torch.float32, device=device)
-        self.extvar_rel.data = torch.tensor([
+        extvar_rel_data_numpy = np.array([
             is_slider[begin_offset: begin_offset + self.note_group_size],
             slider_lengths[begin_offset: begin_offset + self.note_group_size],
             slider_types[begin_offset: begin_offset + self.note_group_size],
             slider_cos_each[begin_offset: begin_offset + self.note_group_size],
             slider_sin_each[begin_offset: begin_offset + self.note_group_size],
             note_distances[begin_offset: begin_offset + self.note_group_size],
-        ], dtype=torch.float32, device=device)
+        ], dtype=np.float32)
+        self.extvar_rel.data = torch.tensor(extvar_rel_data_numpy, dtype=torch.float32, device=device)
         self.extvar_tickdiff.data = torch.tensor(
             tick_diff[begin_offset: begin_offset + self.note_group_size],
             dtype=torch.float32,
@@ -535,11 +538,15 @@ def generate_map():
     note_group_size = GAN_PARAMS["note_group_size"]
     pos = [np.random.randint(100, 412), np.random.randint(80, 304)]
     models = make_models()
+    converttensor = torch.cuda.is_available()
 
     print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
     for i in tqdm(range(timestamps.shape[0] // note_group_size)):
         z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * torch.tensor([512, 384, 1, 1, 512, 384], dtype=torch.float32, device=device) #np.array([512, 384, 1, 1, 512, 384])
-        z = z.detach().cpu().numpy()  # Use detach() before calling numpy()
+        if converttensor:
+            z = z.detach().cpu().numpy()# .cpu() might slow down?
+        else:
+            z = z.detach().numpy()# Use detach() before calling numpy()
         pos = z[-1, 0:2]
         o.append(z)
     a = np.concatenate(o, axis=0)
