@@ -14,6 +14,9 @@ from tqdm import tqdm
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
+import warnings
+warnings.filterwarnings("ignore")
+
 GAN_PARAMS = {
     "verbose" : False,
     "divisor" : 4,
