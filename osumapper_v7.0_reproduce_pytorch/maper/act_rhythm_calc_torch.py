@@ -162,7 +162,7 @@ def step5_predict_notes(model, npz, params):
         test_predictions = model(test_data, div_data)
         print(test_predictions.shape)
 
-    preds = test_predictions.reshape(-1, test_predictions.shape[2])
+    preds = test_predictions.reshape(-1, test_predictions.shape[1])
 
     # Favor sliders a little
     preds[:, 2] += slider_favor
@@ -178,7 +178,7 @@ def step5_predict_notes(model, npz, params):
     is_obj_pred = np.expand_dims(np.where(preds[:, 0] > borderline, 1, 0), axis=1)
 
     obj_type_pred = np.sign(preds[:, 1:4] - np.tile(np.expand_dims(np.max(preds[:, 1:4], axis=1), 1), (1, 3))) + 1
-    others_pred = (1 + np.sign(preds[:, 4:test_predictions.shape[1]] + 0.5)) / 2
+    others_pred = (1 + np.sign(preds[:, 4:test_predictions.shape[0]] + 0.5)) / 2
     another_pred_result = np.concatenate([is_obj_pred, is_obj_pred * obj_type_pred, others_pred], axis=1)
 
     print("{} notes predicted.".format(np.sum(is_obj_pred)))
