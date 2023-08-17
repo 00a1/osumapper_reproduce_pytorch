@@ -260,7 +260,7 @@ def step2_evaluate(model):
     with torch.no_grad():
         test_predictions = model(torch.tensor(test_data, dtype=torch.float32, device=device), torch.tensor(test_div_data, dtype=torch.float32, device=device))
 
-    flat_test_preds = test_predictions.reshape(-1, label_shape[1])
+    flat_test_preds = test_predictions.cpu().numpy().reshape(-1, label_shape[1])
     flat_test_labels = test_labels.reshape(-1, label_shape[1])
 
     pred_result = (flat_test_preds + 1) / 2
