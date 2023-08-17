@@ -160,6 +160,7 @@ def step5_predict_notes(model, npz, params):
     model.eval()
     with torch.no_grad():
         test_predictions = model(test_data, div_data)
+        print(test_predictions.shape)
 
     preds = test_predictions.reshape(-1, test_predictions.shape[2])
 
