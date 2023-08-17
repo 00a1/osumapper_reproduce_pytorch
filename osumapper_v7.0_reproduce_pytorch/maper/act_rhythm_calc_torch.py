@@ -86,7 +86,7 @@ def step5_load_model(model_file="saved_rhythm_model"):
         model_file = "models/default/rhythm_model"
 
 
-    model = Model((-1, 7, 32, 2), (-1, 3 + divisor), (-1, 5))
+    model = Model((-1, 7, 32, 2), (-1, 3 + divisor), (-1, 5)).to(device)
     model.load_state_dict(torch.load(model_file))
     # model = tf.keras.models.load_model(
     #     model_file,
