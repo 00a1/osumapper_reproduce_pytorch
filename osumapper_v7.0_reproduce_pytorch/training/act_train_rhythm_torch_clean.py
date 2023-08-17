@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
 root = "mapdata/"
 # set divisor
 divisor = 4
@@ -182,8 +185,7 @@ def plot_history(history):# not used
 
 def step2_build_model():
     train_shape, div_shape, label_shape = get_data_shape()
-    device = "cpu"# temp
-    model_v7 = Model(train_shape, div_shape, label_shape)#.to(device)
+    model_v7 = Model(train_shape, div_shape, label_shape).to(device)
     print("successfully built model")
     return model_v7
 
@@ -213,8 +215,8 @@ def step2_train_model(model, PARAMS):
 
         for _ in tqdm(range(EPOCHS)):
             optimizer.zero_grad()
-            outputs = model(torch.tensor(new_train_data, dtype=torch.float32), torch.tensor(new_div_data, dtype=torch.float32))
-            loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32))
+            outputs = model(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device))
+            loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32, device=device))
             loss.backward()
             optimizer.step()
             if PARAMS["verbose"]:
@@ -234,8 +236,8 @@ def step2_train_model(model, PARAMS):
                     new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
 
                 optimizer.zero_grad()
-                outputs = model(torch.tensor(new_train_data, dtype=torch.float32), torch.tensor(new_div_data, dtype=torch.float32))
-                loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32))
+                outputs = model(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device))
+                loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32, device=device))
                 loss.backward()
                 optimizer.step()
                 if PARAMS["verbose"]:
@@ -256,7 +258,7 @@ def step2_evaluate(model):
     _train_shape, _div_shape, label_shape = get_data_shape()
 
     with torch.no_grad():
-        test_predictions = model(torch.tensor(test_data, dtype=torch.float32), torch.tensor(test_div_data, dtype=torch.float32))
+        test_predictions = model(torch.tensor(test_data, dtype=torch.float32, device=device), torch.tensor(test_div_data, dtype=torch.float32, device=device))
 
     flat_test_preds = test_predictions.reshape(-1, label_shape[1])
     flat_test_labels = test_labels.reshape(-1, label_shape[1])
