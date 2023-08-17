@@ -1,0 +1,872 @@
+add ez gui
+add generate full map sets
+tf to pytorch
+add more model
+add time to train est
+add reverse cross-compatibility between tensorflow and Pytorch models
+add gpu support
+
+## TODO
+
+- TF to Pytorch
+    - [x] GAN
+    - [ ] rhythm model
+- [ ] EZ gui
+- [ ] GPU support
+- [ ] generate full map sets
+- [ ] more models
+- [ ] time to train est
+- [-] reverse cross-compatibility between tensorflow and Pytorch models
+
+
+
+
+
+
+
+convert def mixed_model(generator, mapping_layer, discriminator, in_params):
+    """
+    Mix the generative model and classifier model together.
+    Training loop:
+    - Train mixed model (where the classifier is set to untrainable) to essentially train generative model
+    - Train classifier model
+    """
+    note_group_size = GAN_PARAMS["note_group_size"];
+    inp = keras.layers.Input(shape=(in_params,))
+    start_pos = keras.layers.Input(shape = (2,))
+    # rel = keras.layers.Input(shape = (7, note_group_size))
+    interm1 = generator(inp)
+    interm2 = mapping_layer(interm1)
+    end = discriminator(interm2)
+    model = keras.Model(inputs = inp, outputs = [interm1, interm2, end])
+
+    discriminator.trainable = False
+
+    try:
+        optimizer = tf.optimizers.Adam(0.001) #Adamoptimizer?
+    except:
+        optimizer = tf.train.AdamOptimizer(0.001) #Adamoptimizer?
+
+    losses = [AlwaysZeroCustomLoss(), BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"]), GenerativeCustomLoss()];
+
+    model.compile(loss=losses,
+                  loss_weights=[1e-8, GAN_PARAMS["box_loss_weight"], 1],
+                optimizer=optimizer)
+    return model to pytorch
+ChatGPT
+Here's the equivalent PyTorch code for the provided TensorFlow Keras function:
+
+python
+Copy code
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+def mixed_model(generator, mapping_layer, discriminator, in_params):
+    note_group_size = GAN_PARAMS["note_group_size"]
+    
+    class MixedModel(nn.Module):
+        def __init__(self):
+            super(MixedModel, self).__init__()
+            self.generator = generator
+            self.mapping_layer = mapping_layer
+            self.discriminator = discriminator
+            self.start_pos = nn.Linear(2, 2)  # Assuming shape (batch_size, 2)
+            
+        def forward(self, inp, start_pos):
+            interm1 = self.generator(inp)
+            interm2 = self.mapping_layer(interm1)
+            end = self.discriminator(interm2)
+            return interm1, interm2, end
+        
+    model = MixedModel()
+
+    # Set discriminator parameters to be untrainable
+    for param in model.discriminator.parameters():
+        param.requires_grad = False
+
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Define custom losses
+    always_zero_loss = AlwaysZeroCustomLoss()
+    box_loss = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"])
+    generative_loss = GenerativeCustomLoss()
+    losses = [always_zero_loss, box_loss, generative_loss]
+
+    return model, optimizer, losses
+In this PyTorch code, I've defined a MixedModel class that combines the generator, mapping layer, and discriminator models. The discriminator's parameters are set to be untrainable by default. The optimizer and custom losses are also defined. Please make sure to replace the custom loss functions (AlwaysZeroCustomLoss, BoxCustomLoss, GenerativeCustomLoss) with their PyTorch implementations or adapt them to PyTorch. Additionally, ensure you have already defined the generator, mapping_layer, and discriminator models before calling this function.
+
+
+------------------------------------------------------------------------------------------------
+
+
+
+# make a new set of notes
+        res_noise = np.random.random((1, g_input_size));
+        res_input = conv_input(res_noise, extvar);
+        _resgenerated, res_map, _resclass = mmodel.predict(res_input);
+        if plot_map:
+            plot_current_map(tf.convert_to_tensor(res_map, dtype=tf.float32)); to pytorch
+ChatGPT
+Here's the equivalent PyTorch code for the given TensorFlow Keras code snippet:
+
+python
+Copy code
+import numpy as np
+import torch
+
+# make a new set of notes
+res_noise = np.random.random((1, g_input_size))
+res_input = conv_input(res_noise, extvar)  # Modify this to PyTorch
+_mmodel.eval()  # Set the model to evaluation mode
+with torch.no_grad():
+    _resgenerated, res_map, _resclass = _mmodel(*res_input)  # Assuming _mmodel is your PyTorch model
+_mmodel.train()  # Set the model back to training mode
+
+if plot_map:
+    plot_current_map(torch.tensor(res_map, dtype=torch.float32))  # Modify thi
+
+------------------------------------------------------------------------------------------------
+
+optimizer = tf.optimizers.Adam(0.002) 
+loss_func='mse'
+model.compile(loss=loss_func, optimizer=optimizer, metrics=[keras.metrics.mae])
+
+
+GAN_PARAMS
+"c_true_batch" : 140,
+
+NPZ defalult
+5930
+----------------------shape[0]
+10
+----------------------shape[1]
+6
+----------------------shape[2]
+
+
+input_shape=(10, 6)) = input_shape=(special_train_data.shape[1], special_train_data.shape[2])
+---
+demo
+input_data = torch.randn(3, 10, 6)  # Batch size of 3, sequence length of 10, input features of 6
+out = model(input_data)
+
+irl
+rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
+actual_train_data = np.concatenate((new_false_maps, randfalse_maps, special_train_data[rn]), axis=0)
+output2 = discriminator(actual_train_data)
+---
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+class ClassifierModel(nn.Module):
+    def __init__(self):
+        super(ClassifierModel, self).__init__()
+
+        self.rnn = nn.RNN(input_size=6, hidden_size=64, num_layers=1, batch_first=True)
+        self.fc1 = nn.Linear(64, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 64)
+        self.fc4 = nn.Linear(64, 64)
+        self.fc5 = nn.Linear(64, 1)
+        self.activation = nn.Tanh()
+        self.output_activation = nn.Tanh()
+        self.lambda_layer = nn.Linear(1, 1)
+
+    def forward(self, x):
+        rnn_output, _ = self.rnn(x)
+        fc1_output = self.fc1(rnn_output)
+        fc2_output = self.fc2(fc1_output)
+        fc3_output = self.fc3(fc2_output)
+        fc4_output = self.fc4(fc3_output)
+        fc5_output = self.fc5(fc4_output)
+        
+        activation_output = self.activation(fc5_output)
+        output = self.output_activation(activation_output)
+        lambda_output = (output + 1) / 2
+
+        return lambda_output
+
+# Define input data
+input_data = torch.randn(3, 10, 6)  # Batch size of 3, sequence length of 10, input features of 6
+
+# Create an instance of the PyTorch model
+pytorch_model = ClassifierModel()
+
+# Define optimizer
+optimizer = optim.Adam(pytorch_model.parameters(), lr=0.001)
+
+# Loss function
+criterion = nn.MSELoss()
+
+# Forward pass
+output = pytorch_model(input_data)
+
+print("Output shape:", output.shape)
+
+# Compile the PyTorch model (not exactly the same as Keras)
+# You will need to define optimizer and loss function separately
+# and call these during the training loop.
+
+
+
+
+
+
+
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+Traceback (most recent call last):
+  File "C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper\findspe-tra-dat.py", line 3, in <module>
+    with np.load("flow_dataset-Copy") as flow_dataset:
+  File "C:\Users\tttre\AppData\Local\Programs\Python\Python39\lib\site-packages\numpy\lib\npyio.py", line 405, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+FileNotFoundError: [Errno 2] No such file or directory: 'flow_dataset-Copy'
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+[[[ 0.86914062  0.84895833  0.          0.          1.04296875
+    0.96354167]
+  [ 0.515625    0.64583333  0.84917458 -0.52811224  0.68945312
+    0.53125   ]
+  [ 0.18945312  0.52864583 -0.99901961  0.04426983  0.03710938
+    0.66927083]
+  ...
+  [ 0.59765625  0.9765625  -0.89643257  0.44318015  0.59765625
+    0.9765625 ]
+  [ 0.4453125   0.80989583 -0.77307337 -0.63431661  0.4453125
+    0.80989583]
+  [ 0.26171875  0.90364583 -0.93385675  0.35764727  0.26171875
+    0.90364583]]
+
+ [[ 0.33789062  0.90625    -0.92570543  0.37824523  0.33789062
+    0.90625   ]
+  [ 0.18554688  0.73958333  0.08691813 -0.99621546  0.2109375
+    0.3515625 ]
+  [ 0.21484375  0.21875     0.98365177  0.18008106  0.390625
+    0.13541667]
+  ...
+  [ 0.83203125  0.5        -0.13675743  0.99060457  0.7578125
+    0.87760417]
+  [ 0.69140625  0.953125   -0.76083395  0.64894661  0.69140625
+    0.953125  ]
+  [ 0.5234375   0.81770833 -0.98354717 -0.18065152  0.42773438
+    0.79427083]]
+
+ [[ 0.30273438  0.97135417 -0.19996001  0.97980406  0.30273438
+    0.97135417]
+  [ 0.10742188  0.97916667  0.19033338 -0.98171952  0.14453125
+    0.72395833]
+  [ 0.09375     0.625      -0.56468392 -0.82530726  0.09375
+    0.625     ]
+  ...
+  [ 0.26367188  0.13541667  0.75636317  0.65415193  0.26367188
+    0.13541667]
+  [ 0.4609375   0.06510417  0.966076   -0.25825794  0.4609375
+    0.06510417]
+  [ 0.4609375   0.06510417  0.88812313  0.4596056   0.64453125
+    0.04166667]]
+
+ ...
+
+ [[ 0.20703125  0.08854167  0.54419111 -0.83896129  0.20703125
+    0.08854167]
+  [ 0.2890625   0.2890625   0.47885213  0.87789557  0.2890625
+    0.2890625 ]
+  [ 0.44140625  0.1875      0.99736582  0.0725357   0.65625
+    0.20833333]
+  ...
+  [ 0.6328125   0.72916667 -0.99185221  0.12739386  0.41992188
+    0.765625  ]
+  [ 0.35742188  0.68229167 -0.70710678 -0.70710678  0.35742188
+    0.68229167]
+  [ 0.1953125   0.76302083 -0.9367922   0.34988624  0.1953125
+    0.76302083]]
+
+ [[ 0.6015625   0.53125     0.47100951  0.88212813  0.6015625
+    0.78125   ]
+  [ 0.6484375   0.89583333  0.47885213  0.87789557  0.6484375
+    0.89583333]
+  [ 0.9453125   0.92708333  0.99689815  0.07870249  0.9453125
+    0.92708333]
+  ...
+  [ 0.5625      0.33333333 -0.99681528  0.07974522  0.46484375
+    0.34375   ]
+  [ 0.3671875   0.35416667 -0.99681528  0.07974522  0.3671875
+    0.35416667]
+  [ 0.21875     0.52083333  0.07974522  0.99681528  0.2265625
+    0.65104167]]
+
+ [[ 0.66992188  0.79166667  0.          0.          0.66992188
+    0.79166667]
+  [ 0.83984375  0.91927083  0.87130794  0.49073666  0.83984375
+    0.91927083]
+  [ 0.98242188  0.7421875  -0.06982913 -0.99755897  0.96875
+    0.48177083]
+  ...
+  [ 0.3671875   0.5         0.          0.          0.3671875
+    0.5       ]
+  [ 0.328125    0.23958333 -0.19611614 -0.98058068  0.328125
+    0.23958333]
+  [ 0.5         0.11458333  0.99755897  0.06982913  0.6953125
+    0.1328125 ]]]
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+[[ 0.26953125  0.34375     0.99934024 -0.03631909  0.40625     0.15885417]
+ [ 0.50976562  0.1875     -0.57052139  0.82128274  0.31835938  0.23958333]
+ [ 0.51953125  0.5703125   0.62990168  0.77667488  0.51953125  0.5703125 ]
+ [ 0.71679688  0.67708333  0.99199791 -0.12625428  0.82421875  0.65885417]
+ [ 0.93359375  0.703125    0.95688058  0.2904816   0.93359375  0.703125  ]
+ [ 0.93359375  0.703125    0.17326509 -0.98487523  0.97070312  0.421875  ]
+ [ 0.83984375  0.19270833 -0.16871734  0.98566448  1.          0.0546875 ]
+ [ 0.74609375  0.26302083 -0.96220605  0.27232247  0.55078125  0.22916667]
+ [ 0.49804688  0.50520833  0.36153891 -0.93235702  0.65234375  0.32291667]
+ [ 0.19335938  0.40625    -0.98278978  0.18472748 -0.00390625  0.32291667]]
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+[[ 0.25976562  0.6796875   1.          0.          0.58203125  0.6796875 ]
+ [ 0.71289062  0.57291667 -0.99998164 -0.00606049  0.390625    0.5703125 ]
+ [ 0.19140625  0.45572917 -0.88731572 -0.46116245 -0.01367188  0.47135417]
+ [ 0.45117188  0.04166667  0.82697482  0.56223896  0.53515625  0.2890625 ]
+ [ 0.75        0.31770833  0.99503719  0.09950372  0.75        0.31770833]
+ [ 0.64257812  0.06770833 -0.49711199 -0.86768639  0.64257812  0.06770833]
+ [ 0.53515625  0.2890625  -0.99995868 -0.00909053  0.3203125   0.28645833]
+ [ 0.140625    0.125       0.40772618  0.91310424  0.11328125  0.39322917]
+ [ 0.140625    0.609375   -0.97109202 -0.23870545 -0.05273438  0.6953125 ]
+ [ 0.34960938  0.18489583  1.          0.          0.671875    0.18489583]]
+[[ 0.28125     0.765625   -0.99589321 -0.09053575  0.17382812  0.75260417]
+ [ 0.06640625  0.72916667 -0.09053575 -0.99589321  0.046875    0.44270833]
+ [ 0.2109375   0.26041667  0.96732997 -0.25352068  0.31445312  0.28385417]
+ [ 0.39453125  0.375       0.96732997  0.25352068  0.49804688  0.3515625 ]
+ [ 0.6015625   0.3828125   0.9753133   0.22082565  0.6015625   0.3828125 ]
+ [ 0.81835938  0.45052083  0.97364675  0.2280614   0.81835938  0.45052083]
+ [ 0.81835938  0.45052083 -0.25997347  0.96561576  0.8203125   0.72916667]
+ [ 0.66796875  0.9296875  -0.33558139 -0.94201122  0.72265625  0.671875  ]
+ [ 0.37695312  0.859375   -0.9262954   0.37679813  0.37695312  0.859375  ]
+ [ 0.16015625  0.859375   -1.          0.          0.16015625  0.859375  ]]
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+[[ 0.95703125  0.70572917  0.43986745 -0.89806271  0.95703125  0.70572917]
+ [ 0.82617188  0.4765625  -0.60577077 -0.79563922  0.82617188  0.4765625 ]
+ [ 0.82617188  0.4765625  -0.97980406  0.19996001  0.73046875  0.50260417]
+ [ 0.64453125  0.5859375  -0.80873608  0.5881717   0.64453125  0.5859375 ]
+ [ 0.4375      0.50260417 -0.95732771 -0.28900459  0.4375      0.50260417]
+ [ 0.38671875  0.22135417 -0.23405384 -0.97222364  0.38671875  0.22135417]
+ [ 0.54296875  0.02083333  0.72048685 -0.6934686   0.54296875  0.02083333]
+ [ 0.75        0.09895833 -0.90681617  0.42152632  0.56445312  0.078125  ]
+ [ 0.81054688  0.4609375   0.65079137  0.7592566   0.81054688  0.4609375 ]
+ [ 0.96484375  0.65625     0.1611319   0.98693288  0.98046875  0.78385417]]
+----------------------
+[[ 0.625       0.62760417  0.07648602 -0.99707065  0.74414062  0.37239583]
+ [ 0.29101562  0.6328125  -0.91832409  0.39582935  0.29101562  0.6328125 ]
+ [ 0.29101562  0.6328125   0.99326314 -0.1158807   0.17382812  0.65104167]
+ [ 0.27148438  0.31770833  0.52513899 -0.85101648  0.27929688  0.01822917]
+ [ 0.48046875  0.17708333 -0.98909546 -0.14727583  0.29882812  0.        ]
+ [ 0.33984375  0.73697917  0.07400149  0.99725813  0.33984375  0.73697917]
+ [ 0.22460938  0.7578125  -0.99093209  0.13436367  0.22460938  0.7578125 ]
+ [ 0.11132812  0.78645833  0.97993666 -0.19930915 -0.00390625  0.81770833]
+ [ 0.18359375  0.48697917  0.60301079 -0.79773303  0.18359375  0.48697917]
+ [ 0.4140625   0.4375      0.98728351 -0.15896938  0.4140625   0.4375    ]]
+----------------------
+1.0
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+10
+----------------------
+6
+----------------------
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+10
+----------------------
+6
+----------------------
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+10
+----------------------
+6
+----------------------
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+10
+----------------------
+6
+----------------------
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+10
+----------------------
+6
+----------------------
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+5930
+----------------------
+10
+----------------------
+6
+----------------------
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>findspe-tra-dat.py
+5930
+----------------------shape[0]
+10
+----------------------shape[1]
+6
+----------------------shape[2]
+
+C:\Users\tttre\Downloads\osumapper-master\osumapper_v7.0_reproduce_pytorch\maper>
+
+
+
+------------------------------------------------------------------------------------------------
+
+
+convert def generative_model(in_params, out_params, loss_func='mse'):
+    """
+    Generative model to generate a set of random numbers.
+    """
+    model = keras.Sequential([
+        keras.layers.Dense(128, input_shape=(in_params,)),
+        keras.layers.Dense(128, activation=tf.nn.relu),
+        keras.layers.Dense(128, activation=tf.nn.tanh),
+        keras.layers.Dense(128, activation=tf.nn.relu),
+        keras.layers.Dense(out_params, activation=tf.nn.tanh)#,
+    ])
+
+    try:
+        optimizer = tf.optimizers.Adam(0.002) #Adamoptimizer?
+    except:
+        optimizer = tf.train.AdamOptimizer(0.002) #Adamoptimizer?
+
+    model.compile(loss=loss_func,
+                optimizer=optimizer,
+                metrics=[keras.metrics.mae])
+    return model to pytorch
+
+
+------------------------------------------------------------------------------------------------
+
+
+convert losses = [AlwaysZeroCustomLoss(), BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"]), GenerativeCustomLoss()]
+model.compile(loss=losses, loss_weights=[1e-8, GAN_PARAMS["box_loss_weight"], 1], optimizer=optimizer) to pytorch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+criterion = nn.MSELoss()
+ginput_noise = torch.rand(g_batch, g_input_size)
+glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
+output = generator(ginput_noise)
+g_loss = criterion(output, glabel)
+
+------------------------------------------------------------------------------------------------
+
+code def inblock_loss(vg, border, value):
+    wall_var_l = torch.where(vg < border, (value - vg)**2, torch.zeros_like(vg))
+    wall_var_r = torch.where(vg > 1 - border, (vg - (1 - value))**2, torch.zeros_like(vg))
+    return torch.mean(wall_var_l + wall_var_r)
+
+
+class GenerativeCustomLoss(nn.Module):
+    def __init__(self):
+        super(GenerativeCustomLoss, self).__init__()
+
+    # def forward(self, y_true, y_pred):
+    #     classification = y_pred
+    #     loss1 = 1 - torch.mean(classification, dim=1)
+    #     return loss1
+    
+    def forward(self, y_true, y_pred):
+        classification = y_pred
+        if classification.dim() == 1:
+            classification = classification.unsqueeze(0)  # Convert to a 2D tensor if it's 1D
+        loss1 = 1 - torch.mean(classification, dim=1)
+        return loss1
+
+class BoxCustomLoss(nn.Module):
+    def __init__(self, border, value):
+        super(BoxCustomLoss, self).__init__()
+        self.loss_border = border
+        self.loss_value = value
+
+    def forward(self, y_true, y_pred):
+        map_part = y_pred
+        print("Shape of map_part:", map_part.shape)
+        return inblock_loss(map_part[0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[4:6], self.loss_border, self.loss_value)
+        #return inblock_loss(map_part[:, :, 0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[:, :, 4:6], self.loss_border, self.loss_value)
+
+class AlwaysZeroCustomLoss(nn.Module):
+    def __init__(self):
+        super(AlwaysZeroCustomLoss, self).__init__()
+
+    def forward(self, y_true, y_pred):
+        return torch.tensor(0.0, dtype=torch.float32)
+
+
+g_loss1 = AlwaysZeroCustomLoss()
+g_loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"])
+g_loss3 = GenerativeCustomLoss()
+loss_weights = [1e-8, GAN_PARAMS["box_loss_weight"], 1]
+glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]
+output = generator(ginput_noise)
+loss1 = g_loss1(output, glabel[0]) * loss_weights[0]# add index to output?
+loss2 = g_loss2(output, glabel[1]) * loss_weights[1]
+loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
+g_loss = loss1+loss2+loss3
+g_loss.backward()
+error --> 545             g_loss.backward()
+    546             optimizer_g.step()
+    547 
+
+/usr/local/lib/python3.10/dist-packages/torch/_tensor.py in backward(self, gradient, retain_graph, create_graph, inputs)
+    485                 inputs=inputs,
+    486             )
+--> 487         torch.autograd.backward(
+    488             self, gradient, retain_graph, create_graph, inputs=inputs
+    489         )
+
+/usr/local/lib/python3.10/dist-packages/torch/autograd/__init__.py in backward(tensors, grad_tensors, retain_graph, create_graph, grad_variables, inputs)
+    198     # some Python versions print out the first line of a multi-line function
+    199     # calls in the traceback and some print out the last line
+--> 200     Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+    201         tensors, grad_tensors_, retain_graph, create_graph, inputs,
+    202         allow_unreachable=True, accumulate_grad=True)  # Calls into the C++ engine to run the backward pass
+
+RuntimeError: element 0 of tensors does not require grad and does not have a grad_fn
+
+
+------------------------------------------------------------------------------------------------
+
+c_false_batch = 5
+c_randfalse_batch = 5
+note_group_size = 10
+c_true_batch = 140
+special_train_data.shape[0] = 5930
+special_train_data.shape[2] = 6
+
+with np.load(flow_dataset_npz) as flow_dataset:
+    maps = flow_dataset["maps"]
+    labels = np.ones(maps.shape[0])
+order2 = np.argsort(np.random.random(maps.shape[0]))
+special_train_data = maps[order2]
+special_train_labels = labels[order2]
+
+code new_false_labels = torch.zeros(c_false_batch)
+randfalse_maps = torch.rand(c_randfalse_batch, note_group_size, special_train_data.shape[2])
+randfalse_labels = torch.zeros(c_randfalse_batch)
+rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
+actual_train_data = torch.cat((new_false_maps, randfalse_maps, special_train_data[rn]), dim=0)
+error --> 569         actual_train_data = torch.cat((new_false_maps, randfalse_maps, special_train_data[rn]), dim=0)
+    570         actual_train_labels = torch.cat((new_false_labels, randfalse_labels, special_train_labels[rn]), dim=0)
+    571 
+
+TypeError: expected Tensor as element 2 in argument 0, but got numpy.ndarray
+
+
+
+
+
+
+
+
+
+
+# of groups: 49
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:318: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at ../torch/csrc/utils/tensor_new.cpp:245.)
+  self.extvar_rel.data = torch.tensor([
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:137: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  l = torch.tensor(note_distances_now, dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:158: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32), dim=0)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:179: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _px = torch.tensor(_pre_px, dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:180: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _py = torch.tensor(_pre_py, dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:212: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:213: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:214: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32))
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:215: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:216: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:217: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32))
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Group 0, Epoch 1: G loss: tensor([0.3200], grad_fn=<AddBackward0>) vs. C loss: 0.25
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+/usr/local/lib/python3.10/dist-packages/torch/nn/modules/loss.py:536: UserWarning: Using a target size (torch.Size([165])) that is different to the input size (torch.Size([165, 10, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Group 0, Epoch 2: G loss: tensor([0.3200], grad_fn=<AddBackward0>) vs. C loss: 0.25
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Group 0, Epoch 3: G loss: tensor([0.3200], grad_fn=<AddBackward0>) vs. C loss: 0.25
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Group 0, Epoch 4: G loss: tensor([0.3200], grad_fn=<AddBackward0>) vs. C loss: 0.25
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Group 0, Epoch 5: G loss: tensor([0.3200], grad_fn=<AddBackward0>) vs. C loss: 0.25
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Shape of map_part: torch.Size([50])
+Group 0, Epoch 6: G loss: tensor([0.3200], grad_fn=<AddBackward0>) vs. C loss: 0.25
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:72: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_l = torch.tensor(vg < 0, dtype=torch.float32)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:73: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_r = torch.tensor(vg > 1, dtype=torch.float32)
+---------------------------------------------------------------------------
+RuntimeError                              Traceback (most recent call last)
+<ipython-input-6-7cbe4d0f7fc9> in <cell line: 26>()
+     24 
+     25 step6_set_gan_params(GAN_PARAMS)
+---> 26 osu_a, data = step6_run_all(flow_dataset_npz=model_params["flow_dataset"])
+
+2 frames
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py in step6_run_all(flow_dataset_npz)
+    739         osu_a = put_everything_in_the_center()
+    740     else:
+--> 741         osu_a = generate_map()
+    742 
+    743     data = objs, predictions, ticks, timestamps, is_slider, is_spinner, is_note_end, sv, slider_ticks, dist_multiplier, slider_types, slider_length_base
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py in generate_map()
+    622     print("# of groups: {}".format(timestamps.shape[0] // note_group_size))
+    623     for i in range(timestamps.shape[0] // note_group_size):
+--> 624         z = generate_set_pytorch(models, begin = i * note_group_size, start_pos = pos, length_multiplier = dist_multiplier, group_id = i, plot_map=False)[:, :6] * np.array([512, 384, 1, 1, 512, 384])
+    625         pos = z[-1, 0:2]
+    626         o.append(z)
+
+/usr/local/lib/python3.10/dist-packages/torch/_tensor.py in __array__(self, dtype)
+    968             return handle_torch_function(Tensor.__array__, (self,), self, dtype=dtype)
+    969         if dtype is None:
+--> 970             return self.numpy()
+    971         else:
+    972             return self.numpy().astype(dtype, copy=False)
+
+RuntimeError: Can't call numpy() on Tensor that requires grad. Use tensor.detach().numpy() instead.
+
+
+------------------------------------------------------------------------------------------------
+
+UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  l = torch.tensor(note_distances_now, dtype=torch.float32)
+
+
+
+
+cuda
+# of groups: 49
+  0%|          | 0/49 [00:00<?, ?it/s]/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:267: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at ../torch/csrc/utils/tensor_new.cpp:245.)
+  self.extvar_rel.data = torch.tensor([
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:128: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  l = torch.tensor(note_distances_now, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:144: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device), dim=0)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:155: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _px = torch.tensor(_pre_px, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:156: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _py = torch.tensor(_pre_py, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:179: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:180: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:181: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32, device=device) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32, device=device))
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:182: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:183: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:184: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32, device=device) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32, device=device))
+/usr/local/lib/python3.10/dist-packages/torch/nn/modules/loss.py:536: UserWarning: Using a target size (torch.Size([165])) that is different to the input size (torch.Size([165, 10, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:74: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:75: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device)
+100%|██████████| 49/49 [01:35<00:00,  1.96s/it]
+
+
+cpu
+# of groups: 49
+  0%|          | 0/49 [00:00<?, ?it/s]/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:267: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at ../torch/csrc/utils/tensor_new.cpp:245.)
+  self.extvar_rel.data = torch.tensor([
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:128: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  l = torch.tensor(note_distances_now, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:144: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device), dim=0)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:155: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _px = torch.tensor(_pre_px, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:156: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _py = torch.tensor(_pre_py, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:179: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:180: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:181: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32, device=device) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32, device=device))
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:182: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:183: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:184: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32, device=device) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32, device=device))
+/usr/local/lib/python3.10/dist-packages/torch/nn/modules/loss.py:536: UserWarning: Using a target size (torch.Size([165])) that is different to the input size (torch.Size([165, 10, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:74: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device)
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:75: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device)
+100%|██████████| 49/49 [00:52<00:00,  1.07s/it]
+
+
+cpu
+100%|██████████| 49/49 [00:52<00:00,  1.07s/it]
+-------------------------------------------------
+
+cuda
+100%|██████████| 49/49 [01:35<00:00,  1.96s/it]
+-------------------------------------------------
+
+
+
+------------------------------------------------------------------------------------------------
+
+ean.py:267: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at ../torch/csrc/utils/tensor_new.cpp:245.)
+  self.extvar_rel.data = torch.tensor([
+
+an.py:128: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  l = torch.tensor(note_distances_now, dtype=torch.float32, device=device)
+
+ean.py:144: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device), dim=0)
+
+ean.py:155: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _px = torch.tensor(_pre_px, dtype=torch.float32, device=device)
+
+an.py:156: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _py = torch.tensor(_pre_py, dtype=torch.float32, device=device)
+
+ean.py:179: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32, device=device)
+
+ean.py:180: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32, device=device)
+
+an.py:181: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32, device=device) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32, device=device))
+
+an.py:182: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32, device=device)
+
+ean.py:183: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32, device=device)
+
+an.py:184: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32, device=device) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32, device=device))
+
+/usr/local/lib/python3.10/dist-packages/torch/nn/modules/loss.py:536: UserWarning: Using a target size (torch.Size([165])) that is different to the input size (torch.Size([165, 10, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+
+ean.py:74: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device)
+
+an.py:75: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device)
+
+
+
+
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:146: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  use_ds = torch.unsqueeze(torch.tensor(tick_diff <= extvar["max_ticks_for_ds"], dtype=torch.float32, device=device).clone().detach(), dim=0)
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:157: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _px = torch.tensor(_pre_px, dtype=torch.float32, device=device).clone().detach()
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:158: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  _py = torch.tensor(_pre_py, dtype=torch.float32, device=device).clone().detach()
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:181: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_l = torch.tensor(_px < wall_l[:, k], dtype=torch.float32, device=device)
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:182: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_r = torch.tensor(_px > wall_r[:, k], dtype=torch.float32, device=device)
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:183: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_xmid = (torch.tensor(_px > wall_l[:, k], dtype=torch.float32, device=device) * torch.tensor(_px < wall_r[:, k], dtype=torch.float32, device=device))
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:184: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_t = torch.tensor(_py < wall_t[:, k], dtype=torch.float32, device=device)
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:185: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_b = torch.tensor(_py > wall_b[:, k], dtype=torch.float32, device=device)
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:186: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_value_ymid = (torch.tensor(_py > wall_t[:, k], dtype=torch.float32, device=device) * torch.tensor(_py < wall_b[:, k], dtype=torch.float32, device=device))
+
+/usr/local/lib/python3.10/dist-packages/torch/nn/modules/loss.py:536: UserWarning: Using a target size (torch.Size([165])) that is different to the input size (torch.Size([165, 10, 1])). This will likely lead to incorrect results due to broadcasting. Please ensure they have the same size.
+  return F.mse_loss(input, target, reduction=self.reduction)
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:74: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_l = torch.tensor(vg < 0, dtype=torch.float32, device=device).clone().detach()
+
+/content/osumapper_reproduce_pytorch/osumapper_v7.0_reproduce_pytorch/maper/act_gan_torch_clean.py:75: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  wall_var_r = torch.tensor(vg > 1, dtype=torch.float32, device=device).clone().detach()
+
+
+------------------------------------------------------------------------------------------------
+
+

@@ -1,24 +1,22 @@
-# -*- coding: utf-8 -*-
-
-#
 # Part 2 action script
-#
 
 import torch
+import torch.nn as nn
+import torch.optim as optim
 
 # import tensorflow as tf
 # from tensorflow import keras
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 
-root = "mapdata/";
+root = "mapdata/"
 
 # set divisor
-divisor = 4;
+divisor = 4
 
 # this is a global variable!
-time_interval = 16;
+time_interval = 16
 
 # lst file, [TICK, TIME, NOTE, IS_CIRCLE, IS_SLIDER, IS_SPINNER, IS_NOTE_END, UNUSED,
 #               0,    1,    2,         3,         4,          5,           6,      7,
@@ -26,34 +24,29 @@ time_interval = 16;
 #                  8,        9,       10,  11,  12,  13,
 # wav file, [len(snapsize), MAPTICKS, 2, fft_size//4]
 
-try: # Idk if it works
-    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = "true"
-except:
-    pass
-
 def read_npz(fn):
     with np.load(fn) as data:
-        wav_data = data["wav"];
-        wav_data = np.swapaxes(wav_data, 2, 3);
-        train_data = wav_data;
-        div_source = data["lst"][:, 0];
-        div_source2 = data["lst"][:, 11:14];
-        div_data = np.concatenate([divisor_array(div_source), div_source2], axis=1);
-        lst_data = data["lst"][:, 2:10];
-        lst_data = 2 * lst_data - 1;
-        train_labels = lst_data;
-    return train_data, div_data, train_labels;
+        wav_data = data["wav"]
+        wav_data = np.swapaxes(wav_data, 2, 3)
+        train_data = wav_data
+        div_source = data["lst"][:, 0]
+        div_source2 = data["lst"][:, 11:14]
+        div_data = np.concatenate([divisor_array(div_source), div_source2], axis=1)
+        lst_data = data["lst"][:, 2:10]
+        lst_data = 2 * lst_data - 1
+        train_labels = lst_data
+    return train_data, div_data, train_labels
 
 def divisor_array(t):
-    d_range = list(range(0, divisor));
-    return np.array([[int(k % divisor == d) for d in d_range] for k in t]);
+    d_range = list(range(0, divisor))
+    return np.array([[int(k % divisor == d) for d in d_range] for k in t])
 
 def read_npz_list():
-    npz_list = [];
+    npz_list = []
     for file in os.listdir(root):
         if file.endswith(".npz"):
-            npz_list.append(os.path.join(root, file));
-    return npz_list;
+            npz_list.append(os.path.join(root, file))
+    return npz_list
 
 def prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered):
     # Filter out slider ends from the training set, since we cannot reliably decide if a slider end is on a note.
@@ -65,63 +58,108 @@ def prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfi
     # After:  IS_NOTE_START, IS_CIRCLE, IS_SLIDER, IS_SPINNER, IS_NOTE_END, UNUSED
     #                     0,         1,         2,          3,           4,      5
 
-    non_object_end_indices = [i for i,k in enumerate(train_labels_unfiltered) if True or k[4] == -1 and k[5] == -1];
-    train_data = train_data_unfiltered[non_object_end_indices];
-    div_data = div_data_unfiltered[non_object_end_indices];
-    train_labels = train_labels_unfiltered[non_object_end_indices][:, [0, 1, 2, 3, 4]];
+    non_object_end_indices = [i for i,k in enumerate(train_labels_unfiltered) if True or k[4] == -1 and k[5] == -1]
+    train_data = train_data_unfiltered[non_object_end_indices]
+    div_data = div_data_unfiltered[non_object_end_indices]
+    train_labels = train_labels_unfiltered[non_object_end_indices][:, [0, 1, 2, 3, 4]]
 
     # should be (X, 7, 32, 2) and (X, 6) in default sampling settings
     # (X, fft_window_type, freq_point, magnitude/phase)
-    return train_data, div_data, train_labels;
+    return train_data, div_data, train_labels
+
+
+
+
+
+
+
+
+# def preprocess_npzs(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered):
+#     train_data, div_data, train_labels = prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered)
+
+#     # Make time intervals from training data
+#     if train_data.shape[0]%time_interval > 0:
+#         train_data = train_data[:-(train_data.shape[0]%time_interval)]
+#         div_data = div_data[:-(div_data.shape[0]%time_interval)]
+#         train_labels = train_labels[:-(train_labels.shape[0]%time_interval)]
+
+#     train_data2 = np.reshape(train_data, (-1, time_interval, train_data.shape[1], train_data.shape[2], train_data.shape[3]))
+#     div_data2 = np.reshape(div_data, (-1, time_interval, div_data.shape[1]))
+#     train_labels2 = np.reshape(train_labels, (-1, time_interval, train_labels.shape[1]))
+
+#     return train_data2, div_data2, train_labels2
 
 def preprocess_npzs(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered):
-    train_data, div_data, train_labels = prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered);
+    train_data, div_data, train_labels = prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered)
 
-    # Make time intervals from training data
-    if train_data.shape[0]%time_interval > 0:
-        train_data = train_data[:-(train_data.shape[0]%time_interval)];
-        div_data = div_data[:-(div_data.shape[0]%time_interval)];
-        train_labels = train_labels[:-(train_labels.shape[0]%time_interval)];
-    train_data2 = np.reshape(train_data, (-1, time_interval, train_data.shape[1], train_data.shape[2], train_data.shape[3]))
-    div_data2 = np.reshape(div_data, (-1, time_interval, div_data.shape[1]))
-    train_labels2 = np.reshape(train_labels, (-1, time_interval, train_labels.shape[1]))
-    return train_data2, div_data2, train_labels2;
+    # # Make time intervals from training data
+    # if train_data.shape[0] > 0:
+    #     train_data = train_data[:-(train_data.shape[0])]
+    #     div_data = div_data[:-(div_data.shape[0])]
+    #     train_labels = train_labels[:-(train_labels.shape[0])]
+    
+    # train_data2 = np.reshape(train_data, (train_data.shape[0], train_data.shape[1], train_data.shape[2], train_data.shape[3]))
+    # div_data2 = np.reshape(div_data, (div_data.shape[0], div_data.shape[1]))
+    # train_labels2 = np.reshape(train_labels, (train_labels.shape[0], train_labels.shape[1]))
+    # return train_data2, div_data2, train_labels2
+    return train_data, div_data, train_labels
+
+
+# def preprocess_npzs(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered):
+#     train_data, div_data, train_labels = prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered)
+
+#     # Make time intervals from training data
+#     if train_data.shape[0]%time_interval > 0:
+#         train_data = train_data[:-(train_data.shape[0]%time_interval)]
+#         div_data = div_data[:-(div_data.shape[0]%time_interval)]
+#         train_labels = train_labels[:-(train_labels.shape[0]%time_interval)]
+
+#     train_data2 = np.reshape(train_data, (time_interval, train_data.shape[1], train_data.shape[2], train_data.shape[3]))
+#     div_data2 = np.reshape(div_data, (time_interval, div_data.shape[1]))
+#     train_labels2 = np.reshape(train_labels, (time_interval, train_labels.shape[1]))
+    
+#     return train_data2, div_data2, train_labels2
+
+
+
+
+
 
 def get_data_shape():
     for file in os.listdir(root):
         if file.endswith(".npz"):
-            train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered = read_npz(os.path.join(root, file));
-            train_data, div_data, train_labels = prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered);
+            train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered = read_npz(os.path.join(root, file))
+            train_data, div_data, train_labels = prefilter_data(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered)
             # should be (X, 7, 32, 2) and (X, 6) in default sampling settings
             # (X, fft_window_type, freq_point, magnitude/phase)
             # X = 76255
-            # print(train_data.shape, train_labels.shape);
+            # print(train_data.shape, train_labels.shape)
             if train_data.shape[0] == 0:
-                continue;
-            return train_data.shape, div_data.shape, train_labels.shape;
-    print("cannot find npz!! using default shape");
-    return (-1, 7, 32, 2), (-1, 3 + divisor), (-1, 5);
+                continue
+            return train_data.shape, div_data.shape, train_labels.shape
+    print("cannot find npz!! using default shape")
+    return (-1, 7, 32, 2), (-1, 3 + divisor), (-1, 5)
 
 def read_some_npzs_and_preprocess(npz_list):
-    train_shape, div_shape, label_shape = get_data_shape();
-    td_list = [];
-    dd_list = [];
-    tl_list = [];
+    train_shape, div_shape, label_shape = get_data_shape()
+    td_list = []
+    dd_list = []
+    tl_list = []
     for fp in npz_list:
         if fp.endswith(".npz"):
-            _td, _dd, _tl = read_npz(fp);
+            _td, _dd, _tl = read_npz(fp)
             if _td.shape[1:] != train_shape[1:]:
-                print("Warning: something wrong found in {}! shape = {}".format(fp, _td.shape));
-                continue;
-            td_list.append(_td);
-            dd_list.append(_dd);
-            tl_list.append(_tl);
-    train_data_unfiltered = np.concatenate(td_list);
-    div_data_unfiltered = np.concatenate(dd_list);
-    train_labels_unfiltered = np.concatenate(tl_list);
+                print("Warning: something wrong found in {}! shape = {}".format(fp, _td.shape))
+                continue
+            td_list.append(_td)
+            dd_list.append(_dd)
+            tl_list.append(_tl)
+    train_data_unfiltered = np.concatenate(td_list)
+    div_data_unfiltered = np.concatenate(dd_list)
+    train_labels_unfiltered = np.concatenate(tl_list)
 
-    train_data2, div_data2, train_labels2 = preprocess_npzs(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered);
-    return train_data2, div_data2, train_labels2;
+    train_data2, div_data2, train_labels2 = preprocess_npzs(train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered)
+    return train_data2, div_data2, train_labels2
 
 def train_test_split(train_data2, div_data2, train_labels2, test_split_count=233):
     """
@@ -129,245 +167,541 @@ def train_test_split(train_data2, div_data2, train_labels2, test_split_count=233
     Note that there is no randomization. It doesn't really matter here, but in other machine learning it's obligatory.
     Requires at least 233 rows of data or it will throw an error. (Tick count/10, around 1.5-2 full length maps)
     """
-    new_train_data = train_data2[:-test_split_count];
-    new_div_data = div_data2[:-test_split_count];
-    new_train_labels = train_labels2[:-test_split_count];
-    test_data = train_data2[-test_split_count:];
-    test_div_data = div_data2[-test_split_count:];
-    test_labels = train_labels2[-test_split_count:];
-    return (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels);
+    new_train_data = train_data2[:-test_split_count]
+    new_div_data = div_data2[:-test_split_count]
+    new_train_labels = train_labels2[:-test_split_count]
+    test_data = train_data2[-test_split_count:]
+    test_div_data = div_data2[-test_split_count:]
+    test_labels = train_labels2[-test_split_count:]
+    return (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels)
+
+# def train_test_split(train_data2, div_data2, train_labels2, test_split_count=233):
+#     """
+#     pass
+#     """
+#     return (train_data2, div_data2, train_labels2), (train_data2, div_data2, train_labels2)
 
 # (train_data_unfiltered, div_data_unfiltered, train_labels_unfiltered) = read_all_npzs();
+
+# class TrainTestSplit:
+#     def __init__(self, test_split_count=233):
+#         self.test_split_count = test_split_count
+
+#     def __call__(self, train_data2, div_data2, train_labels2):
+#         new_train_data = train_data2[:-self.test_split_count]
+#         new_div_data = div_data2[:-self.test_split_count]
+#         new_train_labels = train_labels2[:-self.test_split_count]
+#         test_data = train_data2[-self.test_split_count:]
+#         test_div_data = div_data2[-self.test_split_count:]
+#         test_labels = train_labels2[-self.test_split_count:]
+#         return (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels)
+
+
+
+
 
 
 def set_param_fallback(PARAMS):
     try:
-        divisor = PARAMS["divisor"];
+        divisor = PARAMS["divisor"]
     except:
-        divisor = 4;
+        divisor = 4
     if "train_epochs" not in PARAMS:
-        PARAMS["train_epochs"] = 16;
+        PARAMS["train_epochs"] = 16
     if "train_epochs_many_maps" not in PARAMS:
-        PARAMS["train_epochs_many_maps"] = 6;
+        PARAMS["train_epochs_many_maps"] = 6
     if "too_many_maps_threshold" not in PARAMS:
-        PARAMS["too_many_maps_threshold"] = 200;
+        PARAMS["too_many_maps_threshold"] = 200
     if "data_split_count" not in PARAMS:
-        PARAMS["data_split_count"] = 80;
+        PARAMS["data_split_count"] = 80
     if "plot_history" not in PARAMS:
-        PARAMS["plot_history"] = True;
+        PARAMS["plot_history"] = True
     if "train_batch_size" not in PARAMS:
-        PARAMS["train_batch_size"] = None;
-    return PARAMS;
+        PARAMS["train_batch_size"] = None
+    return PARAMS
 
 # Build the model
 
-from tensorflow.keras.models import Model;
+# from tensorflow.keras.models import Model;
 
-from keras.models import Model
+# from keras.models import Model
 
-def build_model():
-    """
-    Build the model.
-    Two inputs for wav_data and div_data (metadata) respectively.
-    Hyperparameters in the middle are tuned to make sure it runs smoothly on my machine.
-    You can try changing them in the middle if it achieves better result.
-    """
-    train_shape, div_shape, label_shape = get_data_shape();
-    model1 = keras.Sequential([
-        keras.layers.TimeDistributed(keras.layers.Conv2D(16, (2, 2), data_format='channels_last'), input_shape=(time_interval, train_shape[1], train_shape[2], train_shape[3])),
-        keras.layers.TimeDistributed(keras.layers.MaxPool2D((1, 2), data_format='channels_last')),
-        keras.layers.TimeDistributed(keras.layers.Activation(activation=tf.nn.relu)),
-        keras.layers.TimeDistributed(keras.layers.Dropout(0.3)),
-        keras.layers.TimeDistributed(keras.layers.Conv2D(16, (2, 3), data_format='channels_last')),
-        keras.layers.TimeDistributed(keras.layers.MaxPool2D((1, 2), data_format='channels_last')),
-        keras.layers.TimeDistributed(keras.layers.Activation(activation=tf.nn.relu)),
-        keras.layers.TimeDistributed(keras.layers.Dropout(0.3)),
-        keras.layers.TimeDistributed(keras.layers.Flatten()),
-        keras.layers.LSTM(64, activation=tf.nn.tanh, return_sequences=True)
-    ])
+# def build_model():
+#     """
+#     Build the model.
+#     Two inputs for wav_data and div_data (metadata) respectively.
+#     Hyperparameters in the middle are tuned to make sure it runs smoothly on my machine.
+#     You can try changing them in the middle if it achieves better result.
+#     """
+#     train_shape, div_shape, label_shape = get_data_shape();
+#     model1 = keras.Sequential([
+#         #keras.layers.TimeDistributed(keras.layers.Conv2D(16, (2, 2), data_format='channels_last'), input_shape=(16, 7, 32, 2)),
+#         keras.layers.TimeDistributed(keras.layers.Conv2D(16, (2, 2), data_format='channels_last'), input_shape=(time_interval, train_shape[1], train_shape[2], train_shape[3])),
+#         keras.layers.TimeDistributed(keras.layers.MaxPool2D((1, 2), data_format='channels_last')),
+#         keras.layers.TimeDistributed(keras.layers.Activation(activation=tf.nn.relu)),
+#         keras.layers.TimeDistributed(keras.layers.Dropout(0.3)),
+#         keras.layers.TimeDistributed(keras.layers.Conv2D(16, (2, 3), data_format='channels_last')),
+#         keras.layers.TimeDistributed(keras.layers.MaxPool2D((1, 2), data_format='channels_last')),
+#         keras.layers.TimeDistributed(keras.layers.Activation(activation=tf.nn.relu)),
+#         keras.layers.TimeDistributed(keras.layers.Dropout(0.3)),
+#         keras.layers.TimeDistributed(keras.layers.Flatten()),
+#         keras.layers.LSTM(64, activation=tf.nn.tanh, return_sequences=True)
+#     ])
 
-    input2 = keras.layers.InputLayer(input_shape=(time_interval, div_shape[1]));
+#     input2 = keras.layers.InputLayer(input_shape=(time_interval, div_shape[1]));
 
-    conc = keras.layers.concatenate([model1.output, input2.output]);
-    dense1 = keras.layers.Dense(71, activation=tf.nn.tanh)(conc);
-    dense2 = keras.layers.Dense(71, activation=tf.nn.relu)(dense1);
-    dense3 = keras.layers.Dense(label_shape[1], activation=tf.nn.tanh)(dense2);
-
-
-    # I think the first is correct but whatever...
-    try:
-        optimizer = tf.optimizers.RMSprop(0.001) #Adamoptimizer?
-    except:
-        optimizer = tf.train.RMSPropOptimizer(0.001) #Adamoptimizer?
+#     conc = keras.layers.concatenate([model1.output, input2.output]);
+#     dense1 = keras.layers.Dense(71, activation=tf.nn.tanh)(conc);
+#     dense2 = keras.layers.Dense(71, activation=tf.nn.relu)(dense1);
+#     dense3 = keras.layers.Dense(label_shape[1], activation=tf.nn.tanh)(dense2);
 
 
-    final_model = Model(inputs=[model1.input, input2.input], outputs=dense3);
-    final_model.compile(loss='mse',
-                optimizer=optimizer,
-                metrics=[keras.metrics.mae])
-    return final_model
-
-#-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-import torch.nn as nn
-import torch.optim as optim
-
-class TimeDistributed(nn.Module):
-    def __init__(self, module, batch_first=False):
-        super(TimeDistributed, self).__init__()
-        self.module = module
-        self.batch_first = batch_first
-
-    def forward(self, x):
-
-        if len(x.size()) <= 2:
-            return self.module(x)
-
-        # Squash samples and timesteps into a single axis
-        x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
-
-        y = self.module(x_reshape)
-
-        # We have to reshape Y
-        if self.batch_first:
-            y = y.contiguous().view(x.size(0), -1, y.size(-1))  # (samples, timesteps, output_size)
-        else:
-            y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
-
-        return y
-
-class PyTorchCustomModel(nn.Module):
-    def __init__(self, train_shape, div_shape, label_shape, time_interval):
-        super(PyTorchCustomModel, self).__init__()
-
-        self.model1 = nn.Sequential(
-            TimeDistributed(nn.Conv2d(train_shape[1], 16, kernel_size=(2, 2))),
-            TimeDistributed(nn.MaxPool2d(kernel_size=(1, 2))),
-            TimeDistributed(nn.ReLU()),
-            TimeDistributed(nn.Dropout(0.3)),
-            TimeDistributed(nn.Conv2d(16, 16, kernel_size=(2, 3))),
-            TimeDistributed(nn.MaxPool2d(kernel_size=(1, 2))),
-            TimeDistributed(nn.ReLU()),
-            TimeDistributed(nn.Dropout(0.3)),
-            TimeDistributed(nn.Flatten()),
-            nn.LSTM(64, batch_first=True, bidirectional=False)
-        )
-
-        self.input2 = nn.Identity()
-
-        self.concat_layer = nn.Linear(64 + div_shape[1], 71)
-        self.dense1 = nn.Linear(71, 71)
-        self.dense2 = nn.Linear(71, label_shape[1])
-
-    def forward(self, x1, x2):
-        out1 = self.model1(x1)
-        out2 = self.input2(x2)
-        concat = torch.cat((out1, out2), dim=2)
-        dense1 = torch.tanh(self.concat_layer(concat))
-        dense2 = torch.relu(self.dense1(dense1))
-        output = torch.tanh(self.dense2(dense2))
-        return output
-
-# Replace these values with your data shapes
-train_shape = (batch_size, time_interval, channels, height, width)
-div_shape = (batch_size, time_interval, div_features)
-label_shape = (batch_size, output_features)
-time_interval = ...
-
-# Create an instance of the PyTorchCustomModel
-custom_model = PyTorchCustomModel(train_shape, div_shape, label_shape, time_interval)
-
-# Define the loss function and optimizer
-loss_func = nn.MSELoss()
-optimizer = optim.RMSprop(custom_model.parameters(), lr=0.001)
-
-# You can train and use the model as follows (assuming you have input1_data, input2_data, and target_data tensors):
-# optimizer.zero_grad()
-# outputs = custom_model(input1_data, input2_data)
-# loss = loss_func(outputs, target_data)
-# loss.backward()
-# optimizer.step()
+#     # I think the first is correct but whatever...
+#     try:
+#         optimizer = tf.optimizers.RMSprop(0.001) #Adamoptimizer?
+#     except:
+#         optimizer = tf.train.RMSPropOptimizer(0.001) #Adamoptimizer?
 
 
-def plot_history(history):
-    plt.figure()
-    plt.xlabel('Epoch')
-    plt.ylabel('Mean Abs Error [Limitless]')
-    plt.plot(history.epoch, np.array(history.history['mean_absolute_error']),
-           label='Train MAE')
-    plt.plot(history.epoch, np.array(history.history['val_mean_absolute_error']),
-           label = 'Val MAE')
-    plt.plot(history.epoch, np.array(history.history['loss']),
-           label='Train Loss')
-    plt.plot(history.epoch, np.array(history.history['val_loss']),
-           label = 'Val Loss')
-    plt.legend()
-    plt.show()
+#     final_model = Model(inputs=[model1.input, input2.input], outputs=dense3);
+#     final_model.compile(loss='mse',
+#                 optimizer=optimizer,
+#                 metrics=[keras.metrics.mae])
+#     return final_model
+
+
+
+
+
+class Model(nn.Module):
+    def __init__(self, input_shape, div_shape, label_shape):
+        super(Model, self).__init__()
+        print(input_shape[1])
+        self.conv1 = nn.Conv2d(input_shape[1], 16, kernel_size=(2, 2))# input_shape[1] or input_shape[3]??? other nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(2, 2))?
+        self.pool1 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2), padding=(0, 1))
+        self.dropout1 = nn.Dropout(0.3)
+        self.conv2 = nn.Conv2d(16, 16, kernel_size=(1, 1))#kernel_size=(2, 3)
+        self.pool2 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2), padding=(0, 1))
+        self.dropout2 = nn.Dropout(0.3)
+        self.flatten = nn.Flatten()
+        self.lstm = nn.LSTM(input_size=496, hidden_size=64, batch_first=True)
+
+        # self.fc1 = nn.Linear(64 + time_interval * div_shape[1] + 496, 71)
+        # self.fc1 = nn.Linear(12574, 71) # error (12574x71 and 12574x71) fix (12574x71 and 71x71) == (lstm(input(12574)to(x)output(71)) and Linear(input(71)to(x)output(71)))
+        self.fc1 = nn.Linear(71, 71)# https://discuss.pytorch.org/t/runtimeerror-mat1-and-mat2-shapes-cannot-be-multiplied-64x13056-and-153600x2048/101315
+        self.fc2 = nn.Linear(71, 71)
+        self.fc3 = nn.Linear(71, label_shape[1])
+
+    def forward(self, wav_data, div_data):
+        print(wav_data.shape)
+        x = self.conv1(wav_data)
+        print(x.shape)
+        x = torch.relu(self.pool1(x))
+        print(x.shape)
+        x = self.dropout1(x)
+        print(x.shape)
+        x = self.conv2(x)
+        print(x.shape)
+        x = torch.relu(self.pool2(x))
+        print(x.shape)
+        x = self.dropout2(x)
+        print(x.shape)
+
+        x = self.flatten(x)
+        print(x.shape)
+        lstm_input = x.view(x.size(0), -1)
+        print(lstm_input.shape)
+        lstm_input = lstm_input.unsqueeze(1).repeat(1, time_interval, 1)
+        print(lstm_input.shape)
+        lstm_out, _ = self.lstm(lstm_input)
+        print(lstm_out.shape)
+
+        div_data = div_data.view(div_data.size(0), -1)
+        print(div_data.shape)
+        concatenated = torch.cat((lstm_out[:, -1, :], div_data), dim=1)
+        print(concatenated.shape)
+
+        x = self.fc1(concatenated)
+        print(x.shape)
+        x = self.fc2(x)
+        print(x.shape)
+        x = self.fc3(x)
+        print(x.shape)
+
+        return x
+
+# class CModel(nn.Module):
+#     def __init__(self, time_interval, train_shape, div_shape, label_shape):
+#         super(CModel, self).__init__()
+
+#         self.conv1 = nn.Conv2d(in_channels=train_shape[3], out_channels=16, kernel_size=(2, 2))
+#         self.pool1 = nn.MaxPool2d(kernel_size=(1, 2))
+#         self.relu1 = nn.ReLU()
+#         self.dropout1 = nn.Dropout(p=0.3)
+
+#         self.conv2 = nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(2, 3))
+#         self.pool2 = nn.MaxPool2d(kernel_size=(1, 2))
+#         self.relu2 = nn.ReLU()
+#         self.dropout2 = nn.Dropout(p=0.3)
+
+#         self.lstm = nn.LSTM(input_size=64, hidden_size=64, num_layers=1, batch_first=True)
+
+#         self.fc1 = nn.Linear(64 + time_interval * div_shape[1], 71)
+#         self.fc2 = nn.Linear(71, 71)
+#         self.fc3 = nn.Linear(71, label_shape[1])
+
+#         self.time_interval = time_interval
+
+#     # def forward(self, wav_data, div_data):
+#     #     x = self.conv1(wav_data)
+#     #     x = self.pool1(x)
+#     #     x = self.relu1(x)
+#     #     x = self.dropout1(x)
+
+#     #     x = self.conv2(x)
+#     #     x = self.pool2(x)
+#     #     x = self.relu2(x)
+#     #     x = self.dropout2(x)
+
+#     #     x = x.view(x.size(0), -1)  # Flatten
+
+#     #     lstm_input = x.view(x.size(0), self.time_interval, -1)
+#     #     lstm_out, _ = self.lstm(lstm_input)
+
+#     #     div_data = div_data.view(div_data.size(0), -1)
+#     #     concatenated = torch.cat((lstm_out[:, -1, :], div_data), dim=1)
+
+#     #     x = self.fc1(concatenated)
+#     #     x = self.fc2(x)
+#     #     x = self.fc3(x)
+
+#     #     return x
+#     def forward(self, wav_data, div_data):
+#         batch_size, time_interval, channels, height, width = wav_data.shape
+
+#         # x = self.conv1(wav_data.view(-1, channels, height, width))
+#         adjusted_wav_data = wav_data.view(-1, 2, height, width)
+    
+#         x = self.conv1(adjusted_wav_data)
+#         x = self.pool1(x)
+#         x = self.relu1(x)
+#         x = self.dropout1(x)
+
+#         x = self.conv2(x)
+#         x = self.pool2(x)
+#         x = self.relu2(x)
+#         x = self.dropout2(x)
+
+#         x = self.flatten(x)
+#         lstm_input = x.view(batch_size, -1)
+#         lstm_input = lstm_input.unsqueeze(1).repeat(1, time_interval, 1)
+#         lstm_out, _ = self.lstm(lstm_input)
+
+#         div_data = div_data.view(batch_size, -1)
+#         concatenated = torch.cat((lstm_out[:, -1, :], div_data), dim=1)
+
+#         x = self.fc1(concatenated)
+#         x = self.fc2(x)
+#         x = self.fc3(x)
+
+#         return x
+    
+
+
+
+
+
+
+
+
+
+
+# class Model(nn.Module):
+#     def __init__(self, input_shape, div_shape, label_shape):
+#         super(Model, self).__init__()
+#         print(input_shape[1])
+#         self.conv1 = nn.Conv2d(input_shape[1], 16, kernel_size=(2, 2))# input_shape[1] or input_shape[3]??? other nn.Conv2d(in_channels=16, out_channels=16, kernel_size=(2, 2))?
+#         self.pool1 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2), padding=(0, 1))
+#         self.dropout1 = nn.Dropout(0.3)
+#         self.conv2 = nn.Conv2d(16, 16, kernel_size=(1, 1))#kernel_size=(2, 3)
+#         self.pool2 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2), padding=(0, 1))
+#         self.dropout2 = nn.Dropout(0.3)
+#         self.flatten = nn.Flatten()
+#         self.lstm = nn.LSTM(input_size=16 * div_shape[1], hidden_size=64, batch_first=True)
+
+#         self.fc1 = nn.Linear(64 + time_interval * div_shape[1], 71)
+#         self.fc2 = nn.Linear(71, 71)
+#         self.fc3 = nn.Linear(71, label_shape[1])
+
+#     def forward(self, wav_data, div_data):
+#         print(wav_data.shape)
+#         x = self.conv1(wav_data)
+#         print(x.shape)
+#         x = torch.relu(self.pool1(x))
+#         print(x.shape)
+#         x = self.dropout1(x)
+#         print(x.shape)
+#         x = self.conv2(x)
+#         print(x.shape)
+#         x = torch.relu(self.pool2(x))
+#         print(x.shape)
+#         x = self.dropout2(x)
+#         print(x.shape)
+
+#         x = self.flatten(x)
+#         print(x.shape)
+#         lstm_input = x.view(x.size(0), -1)
+#         print(lstm_input.shape)
+#         lstm_input = lstm_input.unsqueeze(1).repeat(1, time_interval, 1)
+#         print(lstm_input.shape)
+#         lstm_out, _ = self.lstm(lstm_input)
+
+#         div_data = div_data.view(div_data.size(0), -1)
+#         concatenated = torch.cat((lstm_out[:, -1, :], div_data), dim=1)
+
+#         x = self.fc1(concatenated)
+#         x = self.fc2(x)
+#         x = self.fc3(x)
+
+#         return x
+
+
+
+# class Model(nn.Module):
+#     def __init__(self, input_shape, div_shape, label_shape, time_interval):
+#         super(Model, self).__init__()
+#         self.conv1 = nn.Conv2d(input_shape[1], 16, kernel_size=(1, 3))
+        
+#         self.dropout1 = nn.Dropout(0.3)
+#         self.conv2 = nn.Conv2d(16, 16, kernel_size=(2, 3))
+#         self.pool2 = nn.MaxPool2d(kernel_size=(1, 2))
+#         self.dropout2 = nn.Dropout(0.3)
+#         self.flatten = nn.Flatten()
+#         self.lstm = nn.LSTM(input_size=16 * div_shape[1], hidden_size=64, batch_first=True)
+
+#         self.fc1 = nn.Linear(64 + time_interval * div_shape[1], 71)
+#         self.fc2 = nn.Linear(71, 71)
+#         self.fc3 = nn.Linear(71, label_shape[1])
+
+#     def forward(self, wav_data, div_data, time_interval):
+#         x = self.conv1(wav_data)
+        
+#         x = self.dropout1(x)
+
+#         x = self.conv2(x)
+#         x = torch.relu(self.pool2(x))
+#         x = self.dropout2(x)
+
+#         x = self.flatten(x)
+#         lstm_input = x.view(x.size(0), -1)
+#         lstm_input = lstm_input.unsqueeze(1).repeat(1, time_interval, 1)
+#         lstm_out, _ = self.lstm(lstm_input)
+
+#         div_data = div_data.view(div_data.size(0), -1)
+#         concatenated = torch.cat((lstm_out[:, -1, :], div_data), dim=1)
+
+#         x = self.fc1(concatenated)
+#         x = self.fc2(x)
+#         x = self.fc3(x)
+
+#         return x
+
+
+# x = torch.relu(self.pool1(x))
+# self.pool1 = nn.MaxPool2d(kernel_size=(1, 2))
+
+
+# def plot_history(history):
+#     plt.figure()
+#     plt.xlabel('Epoch')
+#     plt.ylabel('Mean Abs Error [Limitless]')
+#     plt.plot(history.epoch, np.array(history.history['mean_absolute_error']), label='Train MAE')
+#     plt.plot(history.epoch, np.array(history.history['val_mean_absolute_error']), label = 'Val MAE')
+#     plt.plot(history.epoch, np.array(history.history['loss']), label='Train Loss')
+#     plt.plot(history.epoch, np.array(history.history['val_loss']), label = 'Val Loss')
+#     plt.legend()
+#     plt.show()
 
 # Display training progress by printing a single dot for each completed epoch.
-class PrintDot(keras.callbacks.Callback):
-    def on_epoch_end(self,epoch,logs):
-        if epoch % 100 == 0: print('')
-        print('.', end='')
+# class PrintDot(keras.callbacks.Callback):
+#     def on_epoch_end(self,epoch,logs):
+#         if epoch % 100 == 0: print('')
+#         print('.', end='')
 
 def step2_build_model():
-    model_v7 = build_model();
-    return model_v7;
+    # model_v7 = build_model()
+    train_shape, div_shape, label_shape = get_data_shape()
+    print(train_shape)
+    print(div_shape)
+    print(label_shape)
+    # train_shape, div_shape, label_shape = (-1, 7, 32, 2), (-1, 3 + divisor), (-1, 5)#default
+    # device = "cpu"# temp
+    # model_v7 = Model(train_shape, div_shape, label_shape).to(device)
+    model_v7 = Model(train_shape, div_shape, label_shape)
+    return model_v7
+
+
+# def step2_train_model(model, PARAMS):
+#     global history, new_train_data, new_div_data, new_train_labels, test_data, test_div_data, test_labels;
+#     PARAMS = set_param_fallback(PARAMS);
+
+#     train_file_list = read_npz_list();
+
+#     # Don't worry, it will successfully overfit after those 16 epochs.
+#     EPOCHS = PARAMS["train_epochs"]
+#     too_many_maps_threshold = PARAMS["too_many_maps_threshold"]
+#     data_split_count = PARAMS["data_split_count"]
+#     batch_size = PARAMS["train_batch_size"]
+
+#     early_stop = keras.callbacks.EarlyStopping(monitor='mean_absolute_error', patience=20)
+
+#     # if there is too much data, reduce epoch count (hmm)
+#     if len(train_file_list) >= too_many_maps_threshold:
+#         EPOCHS = PARAMS["train_epochs_many_maps"]
+
+#     if len(train_file_list) < too_many_maps_threshold:
+#         train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list);
+
+#         # Split some test data out
+#         (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2);
+
+#         # Store training stats
+#         history = model.fit([new_train_data, new_div_data], new_train_labels, epochs=EPOCHS,
+#                             validation_split=0.2, verbose=0, batch_size=batch_size,
+#                             callbacks=[early_stop, PrintDot()])
+
+#         # For development! may cause bug in some environment.
+#         if PARAMS["plot_history"]:
+#             plot_history(history)
+#     else: # too much data! read it every turn.
+#         for epoch in range(EPOCHS):
+#             for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)): # hmmmmm
+#                 if map_batch == 0:
+#                     train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count]);
+#                     (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2);
+#                 else:
+#                     new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count]);
+
+#                 history = model.fit([new_train_data, new_div_data], new_train_labels, epochs=1,
+#                                     validation_split=0.2, verbose=0, batch_size=batch_size,
+#                                     callbacks=[])
+#                 # Manually print the dot
+#                 print('.', end='');
+#             print('');
+#     return model;
+
+# # [loss, mae] = model.evaluate([test_data, test_div_data], test_labels, verbose=0)
 
 
 def step2_train_model(model, PARAMS):
-    global history, new_train_data, new_div_data, new_train_labels, test_data, test_div_data, test_labels;
-    PARAMS = set_param_fallback(PARAMS);
+    global history, new_train_data, new_div_data, new_train_labels, test_data, test_div_data, test_labels
+    # loss = history = [0.74, 0.40, 0.38, ...]
+    PARAMS = set_param_fallback(PARAMS)
 
-    train_file_list = read_npz_list();
+    train_file_list = read_npz_list()
 
     # Don't worry, it will successfully overfit after those 16 epochs.
     EPOCHS = PARAMS["train_epochs"]
     too_many_maps_threshold = PARAMS["too_many_maps_threshold"]
     data_split_count = PARAMS["data_split_count"]
-    batch_size = PARAMS["train_batch_size"]
+    #batch_size = PARAMS["train_batch_size"]
 
-    early_stop = keras.callbacks.EarlyStopping(monitor='mean_absolute_error', patience=20)
+    # Store training stats
+    criterion = nn.MSELoss()
+    optimizer = optim.RMSprop(model.parameters(), lr=0.001)
 
     # if there is too much data, reduce epoch count (hmm)
     if len(train_file_list) >= too_many_maps_threshold:
         EPOCHS = PARAMS["train_epochs_many_maps"]
 
     if len(train_file_list) < too_many_maps_threshold:
-        train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list);
+        train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list)
 
         # Split some test data out
-        (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2);
+        (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
+        # print(new_train_data.shape[0])552
+        # print(new_train_data.shape[1])16
+        # print(new_train_data.shape[2])7
+        # print(new_train_data.shape[3])32
+        # print(new_train_data.shape[4])2
+        # print(new_train_data.shape[5])# error
+        # new_train_data_r = np.reshape(new_train_data, (new_train_data.shape[0], new_train_data.shape[2], new_train_data.shape[3], new_train_data.shape[4]))
+        # new_train_data = new_train_data.reshape()
 
-        # Store training stats
-        history = model.fit([new_train_data, new_div_data], new_train_labels, epochs=EPOCHS,
-                            validation_split=0.2, verbose=0, batch_size=batch_size,
-                            callbacks=[early_stop, PrintDot()])
+        for _ in range(EPOCHS):
+            optimizer.zero_grad()
+            outputs = model(torch.tensor(new_train_data, dtype=torch.float32), torch.tensor(new_div_data, dtype=torch.float32))
+            print(outputs.size())
+            print(torch.tensor(new_train_labels, dtype=torch.float32).size())
+            # assert outputs.shape == new_train_labels.shape, "Shapes of outputs and labels do not match"
+            loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32))
+            loss.backward()
+            optimizer.step()
+            print("loss: " + str(loss.item()))
 
-        # For development! may cause bug in some environment.
-        if PARAMS["plot_history"]:
-            plot_history(history)
-    else: # too much data! read it every turn.
-        for epoch in range(EPOCHS):
-            for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)): # hmmmmm
+            if PARAMS["plot_history"]:
+                pass # Implement your own plotting function for PyTorch
+    else:  # too much data! read it every turn.
+        for _ in range(EPOCHS):
+            for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)):  # hmmmmm
                 if map_batch == 0:
-                    train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count]);
-                    (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2);
+                    train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
+                    (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
                 else:
-                    new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count]);
+                    new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
 
-                history = model.fit([new_train_data, new_div_data], new_train_labels, epochs=1,
-                                    validation_split=0.2, verbose=0, batch_size=batch_size,
-                                    callbacks=[])
-                # Manually print the dot
-                print('.', end='');
-            print('');
-    return model;
+                optimizer.zero_grad()
+                outputs = model(new_train_data, new_div_data)
+                loss = criterion(outputs, new_train_labels)
+                loss.backward()
+                optimizer.step()
 
-# [loss, mae] = model.evaluate([test_data, test_div_data], test_labels, verbose=0)
+                print("loss: " + str(loss))
+                print('.')
+            print('')
+    return model
 
-# Accuracy
-from sklearn.metrics import roc_auc_score;
+
+
+
+
+
+
+
+
+
+# # Accuracy
+# from sklearn.metrics import roc_auc_score;
+
+# def step2_evaluate(model):
+#     """
+#     Evaluate model using AUC score.
+#     Previously I used F1 but I think AUC is more appropriate for this type of data.
+
+#     High value (close to 1.00) doesn't always mean it's better. Usually it means you put identical maps in the training set.
+#     It shouldn't be possible to reach very high accuracy since that will mean that music 100% dictates map rhythm.
+#     """
+#     train_shape, div_shape, label_shape = get_data_shape();
+
+#     test_predictions = model.predict([test_data, test_div_data]).reshape((-1, time_interval, label_shape[1]))
+
+#     flat_test_preds = test_predictions.reshape(-1, label_shape[1]);
+#     flat_test_labels = test_labels.reshape(-1, label_shape[1]);
+
+#     pred_result = (flat_test_preds + 1) / 2
+#     actual_result = (flat_test_labels + 1) / 2
+
+#     # Individual column predictions
+#     column_names = ["is_note_start", "is_circle", "is_slider", "is_spinner", "is_note_end"];
+#     for i, k in enumerate(column_names):
+#         if i == 3: # No one uses spinners anyways
+#             continue;
+#         if i == 2 and np.sum(actual_result[:, i]) == 0: # No sliders (Taiko)
+#             continue;
+#         print("{} auc score: {}".format(k, roc_auc_score(actual_result[:, i], pred_result[:, i])))
+
+
+from sklearn.metrics import roc_auc_score
 
 def step2_evaluate(model):
     """
@@ -377,34 +711,39 @@ def step2_evaluate(model):
     High value (close to 1.00) doesn't always mean it's better. Usually it means you put identical maps in the training set.
     It shouldn't be possible to reach very high accuracy since that will mean that music 100% dictates map rhythm.
     """
-    train_shape, div_shape, label_shape = get_data_shape();
+    model.eval()
+    train_shape, div_shape, label_shape = get_data_shape()
 
-    test_predictions = model.predict([test_data, test_div_data]).reshape((-1, time_interval, label_shape[1]))
+    with torch.no_grad():
+        test_predictions = model(torch.tensor(test_data, dtype=torch.float32), torch.tensor(test_div_data, dtype=torch.float32))
+        # test_predictions = test_predictions.cpu().numpy().reshape((-1, time_interval, label_shape[1]))
+        # test_predictions = test_predictions.cpu().numpy().reshape((-1, 16, 5))
 
-    flat_test_preds = test_predictions.reshape(-1, label_shape[1]);
-    flat_test_labels = test_labels.reshape(-1, label_shape[1]);
+    flat_test_preds = test_predictions.reshape(-1, label_shape[1])
+    flat_test_labels = test_labels.reshape(-1, label_shape[1])
 
     pred_result = (flat_test_preds + 1) / 2
     actual_result = (flat_test_labels + 1) / 2
 
     # Individual column predictions
-    column_names = ["is_note_start", "is_circle", "is_slider", "is_spinner", "is_note_end"];
+    column_names = ["is_note_start", "is_circle", "is_slider", "is_spinner", "is_note_end"]
     for i, k in enumerate(column_names):
-        if i == 3: # No one uses spinners anyways
-            continue;
-        if i == 2 and np.sum(actual_result[:, i]) == 0: # No sliders (Taiko)
-            continue;
-        print("{} auc score: {}".format(k, roc_auc_score(actual_result[:, i], pred_result[:, i])))
+        if i == 3:  # No one uses spinners anyways
+            continue
+        if i == 2 and np.sum(actual_result[:, i]) == 0:  # No sliders (Taiko)
+            continue
+        auc_score = roc_auc_score(actual_result[:, i], pred_result[:, i])
+        print("{} auc score: {}".format(k, auc_score))
 
 
-def step2_save(model):
-    tf.keras.models.save_model(
-        model,
-        "saved_rhythm_model",
-        overwrite=True,
-        include_optimizer=True,
-        save_format="h5"
-    );
+# def step2_save(model):
+#     tf.keras.models.save_model(
+#         model,
+#         "saved_rhythm_model",
+#         overwrite=True,
+#         include_optimizer=True,
+#         save_format="h5"
+#     );
 
 
 def step2_save(model):
