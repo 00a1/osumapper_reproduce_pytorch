@@ -167,7 +167,7 @@ def step5_predict_notes(model, npz, params):
 
     # Favor sliders a little
     preds[:, 2] += slider_favor
-    divs = div_data.reshape(-1, div_data.shape[2])
+    divs = div_data.reshape(-1, div_data.shape[1])
     margin = np.sum([divisor_favor[k] * divs[:, k] for k in range(0, divisor)])
 
     preds[:, 0] += margin
