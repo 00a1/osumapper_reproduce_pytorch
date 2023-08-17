@@ -163,7 +163,7 @@ def step5_predict_notes(model, npz, params):
         test_predictions = model(test_data, div_data)
         print(test_predictions.shape)
 
-    preds = test_predictions.reshape(-1, test_predictions.shape[1])
+    preds = test_predictions.cpu().numpy().reshape(-1, test_predictions.shape[1])
 
     # Favor sliders a little
     preds[:, 2] += slider_favor
