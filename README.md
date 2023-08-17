@@ -10,12 +10,14 @@ https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/m
 
 - TF to Pytorch
     - [x] GAN
-    - [ ] rhythm model
+    - [x] rhythm model
+	- [ ] rhythm model infer
+	- [ ] speed model
 - [ ] EZ gui
 - [x] GPU support
 - [ ] generate full map sets
 - [ ] more models
-- [ ] time to train est
+- [x] time to train est
 - [ ] reverse cross-compatibility between tensorflow and Pytorch models
 - [ ] .osu file maker
 - [ ] add spinners
