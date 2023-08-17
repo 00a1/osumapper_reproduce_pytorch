@@ -157,6 +157,7 @@ def step5_predict_notes(model, npz, params):
 
     test_data = torch.tensor(test_data, dtype=torch.float32, device=device)
     div_data = torch.tensor(div_data, dtype=torch.float32, device=device)
+    print(div_data.shape)
     model.eval()
     with torch.no_grad():
         test_predictions = model(test_data, div_data)
