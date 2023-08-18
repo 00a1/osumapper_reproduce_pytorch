@@ -5,10 +5,8 @@ import torch.nn as nn
 import numpy as np
 import os
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
-
 
 divisor = 4
 time_interval = 16
