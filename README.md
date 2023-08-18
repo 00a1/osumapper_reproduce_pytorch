@@ -2,7 +2,9 @@
  
 ## Colaboratory
 
-https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/main/osumapper_v7.0_reproduce_pytorch/maper/Colab_pytorch.ipynb
+maper: https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/main/osumapper_v7.0_reproduce_pytorch/maper/Colab_pytorch.ipynb
+
+training: https://colab.research.google.com/github/00a1/osumapper_reproduce_pytorch/blob/main/osumapper_v7.0_reproduce_pytorch/training/Colab_Training_torch.ipynb
 
 ![Structure diagram](https://i.imgur.com/QfImd1k.png)
 
