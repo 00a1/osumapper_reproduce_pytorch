@@ -297,6 +297,34 @@ def load_pretrained_model(model_name):
                 "slider_mirror" : 1
             }
         },
+        "mytf8star" : {
+            "rhythm_model" : "models/mytf8star/rhythm_model",
+            "flow_dataset" : "models/mytf8star/flow_dataset.npz",
+            "rhythm_param" : [1, 0.79, 0, [0, 0, 0, 0], 8],
+            "gan" : {
+                "divisor" : 4,
+                "good_epoch" : 8,
+                "max_epoch" : 30,
+                "note_group_size" : 10,
+                "g_epochs" : 7,
+                "c_epochs" : 3,
+                "g_batch" : 50,
+                "g_input_size" : 50,
+                "c_true_batch" : 150,
+                "c_false_batch" : 10,
+                "c_randfalse_batch" : 5,
+                "note_distance_basis" : 200,
+                "next_from_slider_end" : False,
+                "max_ticks_for_ds" : 2,
+                "box_loss_border" : 0.1,
+                "box_loss_value" : 0.4,
+                "box_loss_weight" : 1
+            },
+            "modding" : {
+                "stream_regularizer" : 3,
+                "slider_mirror" : 1
+            }
+        },
         "taiko" : {
             "rhythm_model" : "models/taiko/rhythm_model",
             "flow_dataset" : "models/taiko/flow_dataset.npz",
