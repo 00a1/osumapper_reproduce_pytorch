@@ -173,14 +173,11 @@ class Model(nn.Module):
         return x
 
 
-def plot_history(history):# not used
+def plot_history(history):
     plt.figure()
     plt.xlabel('Epoch')
     plt.ylabel('Mean Abs Error [Limitless]')
-    plt.plot(history.epoch, np.array(history.history['mean_absolute_error']), label='Train MAE')
-    plt.plot(history.epoch, np.array(history.history['val_mean_absolute_error']), label = 'Val MAE')
-    plt.plot(history.epoch, np.array(history.history['loss']), label='Train Loss')
-    plt.plot(history.epoch, np.array(history.history['val_loss']), label = 'Val Loss')
+    plt.plot(history["epoch"], np.array(history["loss"]), label='Train Loss')
     plt.legend()
     plt.show()
 
@@ -200,6 +197,7 @@ def step2_train_model(model, PARAMS):
     too_many_maps_threshold = PARAMS["too_many_maps_threshold"]
     data_split_count = PARAMS["data_split_count"]
     batch_size = PARAMS["train_batch_size"]# old 32
+    history = {"epoch": [], "loss": []}
 
     # Store training stats
     criterion = nn.MSELoss()
@@ -221,7 +219,8 @@ def step2_train_model(model, PARAMS):
         # train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
         # train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
-        for _ in tqdm(range(EPOCHS), desc="Epoch"):
+        for epoch in tqdm(range(EPOCHS), desc="Epoch"):
+            total_loss = 0.0
             # for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
             for batch_idx in range(batch_size):
                 optimizer.zero_grad()
@@ -230,17 +229,22 @@ def step2_train_model(model, PARAMS):
                 # loss = criterion(outputs, new_train_labels_batch)
                 outputs = model(torch.tensor(new_train_data_split[batch_idx], dtype=torch.float32, device=device), torch.tensor(new_div_data_split[batch_idx], dtype=torch.float32, device=device))
                 loss = criterion(outputs, torch.tensor(new_train_labels_split[batch_idx], dtype=torch.float32, device=device))
-                loss.backward()
+                # loss.backward()
+                total_loss += loss.item()
                 optimizer.step()
                 if PARAMS["verbose"]:
                     print("loss: " + str(loss.item()))
+
+            epoch_loss = total_loss / batch_size
+            history["epoch"].append(epoch)
+            history["loss"].append(epoch_loss)
                 
             if PARAMS["plot_history"]:
-                pass # not used
+                plot_history(history)
         if not PARAMS["verbose"]:
             print("final loss: " + str(loss.item()))
     
-    else:# too much map data! read it every turn.
+    else:# too much map data! read it every turn. UPDATE CODE
         for _ in tqdm(range(EPOCHS), desc="Epoch", position=0, leave=True):
             for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)):
                 if map_batch == 0:
