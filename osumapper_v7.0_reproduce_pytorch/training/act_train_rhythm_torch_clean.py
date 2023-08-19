@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
+from torch.utils.data import DataLoader, TensorDataset
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -198,6 +199,7 @@ def step2_train_model(model, PARAMS):
     EPOCHS = PARAMS["train_epochs"]
     too_many_maps_threshold = PARAMS["too_many_maps_threshold"]
     data_split_count = PARAMS["data_split_count"]
+    batch_size = PARAMS["train_batch_size"]# 32
 
     # Store training stats
     criterion = nn.MSELoss()
@@ -212,21 +214,26 @@ def step2_train_model(model, PARAMS):
 
         # Split some test data out
         (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
+        train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
+        train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
         for _ in tqdm(range(EPOCHS)):
-            optimizer.zero_grad()
-            outputs = model(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device))
-            loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32, device=device))
-            loss.backward()
-            optimizer.step()
-            if PARAMS["verbose"]:
-                print("loss: " + str(loss.item()))
-
+            for batch in train_loader:
+                optimizer.zero_grad()
+                new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
+                outputs = model(new_train_data_batch, new_div_data_batch)
+                loss = criterion(outputs, new_train_labels_batch)
+                loss.backward()
+                optimizer.step()
+                if PARAMS["verbose"]:
+                    print("loss: " + str(loss.item()))
+                
             if PARAMS["plot_history"]:
                 pass # not used
         if not PARAMS["verbose"]:
             print("final loss: " + str(loss.item()))
-    else:  # too much data! read it every turn.
+    
+    else:# too much map data! read it every turn.
         for _ in tqdm(range(EPOCHS)):
             for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)):
                 if map_batch == 0:
@@ -235,13 +242,18 @@ def step2_train_model(model, PARAMS):
                 else:
                     new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
 
-                optimizer.zero_grad()
-                outputs = model(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device))
-                loss = criterion(outputs, torch.tensor(new_train_labels, dtype=torch.float32, device=device))
-                loss.backward()
-                optimizer.step()
-                if PARAMS["verbose"]:
-                    print("loss: " + str(loss.item()))
+                train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
+                train_loader = DataLoader(train_dataset, batch_size=batch_size)
+
+                for batch in train_loader:
+                    optimizer.zero_grad()
+                    new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
+                    outputs = model(new_train_data_batch, new_div_data_batch)
+                    loss = criterion(outputs, new_train_labels_batch)
+                    loss.backward()
+                    optimizer.step()
+                    if PARAMS["verbose"]:
+                        print("loss: " + str(loss.item()))
         if not PARAMS["verbose"]:
             print("final loss: " + str(loss.item()))
     return model
