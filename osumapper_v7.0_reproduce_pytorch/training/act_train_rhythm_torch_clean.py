@@ -217,8 +217,8 @@ def step2_train_model(model, PARAMS):
         train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
         train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
-        for _ in tqdm(range(EPOCHS), desc="Epoch"):
-            for batch in tqdm(train_loader, leave=False, desc="Batch"):
+        for _ in tqdm(range(EPOCHS), desc="Epoch", position=0, leave=True):
+            for batch in tqdm(train_loader, desc="Batch", position=0, leave=True):
                 optimizer.zero_grad()
                 new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
                 outputs = model(new_train_data_batch, new_div_data_batch)
@@ -234,7 +234,7 @@ def step2_train_model(model, PARAMS):
             print("final loss: " + str(loss.item()))
     
     else:# too much map data! read it every turn.
-        for _ in tqdm(range(EPOCHS), desc="Epoch"):
+        for _ in tqdm(range(EPOCHS), desc="Epoch", position=0, leave=True):
             for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)):
                 if map_batch == 0:
                     train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
@@ -245,7 +245,7 @@ def step2_train_model(model, PARAMS):
                 train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
                 train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
-                for batch in tqdm(train_loader, leave=False, desc="Batch"):
+                for batch in tqdm(train_loader, desc="Batch", position=0, leave=True):
                     optimizer.zero_grad()
                     new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
                     outputs = model(new_train_data_batch, new_div_data_batch)
