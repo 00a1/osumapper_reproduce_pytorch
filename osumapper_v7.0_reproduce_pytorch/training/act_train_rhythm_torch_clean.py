@@ -218,7 +218,7 @@ def step2_train_model(model, PARAMS):
         train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
         for _ in tqdm(range(EPOCHS)):
-            for batch in train_loader:
+            for batch in tqdm(train_loader):
                 optimizer.zero_grad()
                 new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
                 outputs = model(new_train_data_batch, new_div_data_batch)
@@ -245,7 +245,7 @@ def step2_train_model(model, PARAMS):
                 train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
                 train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
-                for batch in train_loader:
+                for batch in tqdm(train_loader):
                     optimizer.zero_grad()
                     new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
                     outputs = model(new_train_data_batch, new_div_data_batch)
