@@ -12,7 +12,7 @@ import numpy as np
 from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
 from act_modding import step7_modding
-from act_final import step8_save_osu_file
+from act_final import step8_save_osu_file_gui
 # from act_taiko_hitsounds import step8_taiko_hitsounds_set_params, step8_apply_taiko_hitsounds
 
 parser = argparse.ArgumentParser()
@@ -88,7 +88,7 @@ def step3(stream_regularizer, slider_mirror):
         # hitsounds = step8_apply_taiko_hitsounds(osu_a, data, hs_dataset=model_params["hs_dataset"], params=taiko_hitsounds_params)
         # saved_osu_name = step8_save_osu_file(osu_a, data, hitsounds=hitsounds)
     # else:
-    saved_osu_name = step8_save_osu_file(osu_a, data)
+    saved_osu_name = step8_save_osu_file_gui(osu_a, data)
     return saved_osu_name
 
 with gr.Blocks(title="WebUI") as app:
@@ -137,7 +137,7 @@ with gr.Blocks(title="WebUI") as app:
                     stream_regularizer = gr.Slider(minimum=0, maximum=4, step=1, value=1, label="stream_regularizer", interactive=True)
                     slider_mirror = gr.Slider(minimum=0, maximum=1, step=1, value=1, label="slider_mirror", interactive=True)
                 butstep3 = gr.Button("step3", variant="primary")
-                file_out = gr.File(interactive=False, label="map file output", type="binary")
+                file_out = gr.File(interactive=False, label="map file output")
                 butstep3.click(step3, [stream_regularizer, slider_mirror], [file_out], api_name="mod")
             # with gr.Row():
             #     butstep3 = gr.Button("clean up", variant="primary")

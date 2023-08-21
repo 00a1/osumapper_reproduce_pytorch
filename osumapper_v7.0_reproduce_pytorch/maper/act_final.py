@@ -79,6 +79,41 @@ def step8_save_osu_file(osu_map, data, hitsounds=None):
 
     return filename
 
+def get_osu_file_name_gui(metadata):
+    """
+    Construct the .osu file name from the metadata.
+    """
+    # artist = metadata["artist"]
+    # title = metadata["title"]
+    # creator = metadata["creator"]
+    # diffname = metadata["diffname"]
+    # outname = (artist+" - " if len(artist) > 0 else "") + title + " (" + creator + ") [" + diffname + "].osu"
+    # outname = re.sub("[^a-zA-Z0-9\(\)\[\] \.\,\!\~\`\{\}\-\_\=\+\&\^\@\#\$\%\;\']","", outname)
+    return "output.osu"
+
+def step8_save_osu_file_gui(osu_map, data, hitsounds=None):
+    """
+    Save trained map to disk, using filename generated from its metadata.
+    """
+    osu_obj_array = convert_to_osu_obj(osu_map, data, hitsounds=hitsounds)
+
+    with open("mapthis.json", encoding="utf-8") as map_json:
+        map_dict = json.load(map_json)
+        map_meta = map_dict["meta"]
+        filename = get_osu_file_name_gui(map_meta)
+        map_dict["obj"] = osu_obj_array
+
+    with open('mapthis.json', 'w', encoding="utf-8") as outfile:
+        json.dump(map_dict, outfile, ensure_ascii=False)
+
+    c = run_command(["node", "load_map.js", "c", "mapthis.json", filename])
+    if(len(c) > 1):
+        print(c.decode("utf-8"))
+
+    print("finished on: {}".format(datetime.datetime.now()))
+
+    return filename
+
 def step8_clean_up():
     # clean up intermediate files
     for item in ["mapthis.json", "audio.mp3", "timing.osu", "rhythm_data.npz", "mapthis.npz", "temp_json_file.json", "wavfile.wav", "temp/temp_json_file.json", "temp/wavfile.wav", "evaluatedRhythm.json"]:
