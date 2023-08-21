@@ -6,10 +6,10 @@ from act_newmap_prep import step4_read_new_map_gui
 import numpy as np
 
 # pytorch
-from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
+# from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
     
 # tensorflow
-# from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
+from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
 from act_modding import step7_modding
 from act_final import step8_save_osu_file
@@ -21,7 +21,8 @@ cmd_opts = parser.parse_args()
 
 def step1(models, map_file, audio_file, dist_multiplier, note_density, slider_favor, divisor_favor, slider_max_ticks):
     global model_params
-    model_params = load_pretrained_model("torchtest")
+    # model_params = load_pretrained_model("torchtest")
+    model_params = load_pretrained_model(models)
 
     # step4_read_new_map(uploaded_osu_name)
     step4_read_new_map_gui(map_file.name, audio_file.name)
@@ -136,7 +137,7 @@ with gr.Blocks(title="WebUI") as app:
                     stream_regularizer = gr.Slider(minimum=0, maximum=4, step=1, value=1, label="stream_regularizer", interactive=True)
                     slider_mirror = gr.Slider(minimum=0, maximum=1, step=1, value=1, label="slider_mirror", interactive=True)
                 butstep3 = gr.Button("step3", variant="primary")
-                file_out = gr.File(interactive=False, label="map file output")
+                file_out = gr.File(interactive=False, label="map file output", type=".osu")
                 butstep3.click(step3, [stream_regularizer, slider_mirror], [file_out], api_name="mod")
             # with gr.Row():
             #     butstep3 = gr.Button("clean up", variant="primary")
