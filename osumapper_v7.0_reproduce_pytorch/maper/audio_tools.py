@@ -41,6 +41,8 @@ def read_osu_file(path, convert=False, wav_name="wavfile.wav", json_name="temp_j
             # if(len(result) > 1):
             #     print(result.decode("utf-8"))
             #     raise Exception("FFMPEG Failure")
+        else:
+            mp3_file = ""
 
     # delete the temp json later
     # if json_name == "temp_json_file.json":
@@ -196,6 +198,24 @@ def read_and_save_osu_file_using_json_wavdata(path, json_path, filename = "saved
 
 def read_and_save_osu_tester_file(path, filename = "saved", json_name="mapthis.json", divisor=4):
     osu_dict, wav_file = read_osu_file(path, convert = True, json_name=json_name)
+    sig, samplerate = librosa.load(wav_file, sr=None, mono=True)
+    file_len = (sig.shape[0] / samplerate * 1000 - 3000)
+
+    # ticks = ticks from each uninherited timing section
+    ticks, timestamps, tick_lengths, slider_lengths = get_all_ticks_and_lengths_from_ts(osu_dict["timing"]["uts"], osu_dict["timing"]["ts"], file_len, divisor=divisor)
+
+    # old version to determine ticks (all from start)
+    # ticks = np.array([i for i,k in enumerate(timestamps)])
+    extra = np.array([60000 / tick_lengths, slider_lengths])
+
+    wav_data = read_wav_data(timestamps, wav_file, snapint=[-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3], fft_size = 128)
+    # in order to match first dimension
+    wav_data = np.swapaxes(wav_data, 0, 1)
+
+    np.savez_compressed(filename, ticks = ticks, timestamps = timestamps, wav = wav_data, extra = extra)
+
+def read_and_save_osu_tester_file_gui(path, wav_file, filename = "saved", json_name="mapthis.json", divisor=4):
+    osu_dict, _wav_file = read_osu_file(path, convert = False, json_name=json_name)
     sig, samplerate = librosa.load(wav_file, sr=None, mono=True)
     file_len = (sig.shape[0] / samplerate * 1000 - 3000)
 
