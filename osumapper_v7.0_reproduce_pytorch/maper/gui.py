@@ -137,7 +137,7 @@ with gr.Blocks(title="WebUI") as app:
                     stream_regularizer = gr.Slider(minimum=0, maximum=4, step=1, value=1, label="stream_regularizer", interactive=True)
                     slider_mirror = gr.Slider(minimum=0, maximum=1, step=1, value=1, label="slider_mirror", interactive=True)
                 butstep3 = gr.Button("step3", variant="primary")
-                file_out = gr.File(interactive=False, label="map file output", type=".osu")
+                file_out = gr.File(interactive=False, label="map file output", file_types=[".osu"])
                 butstep3.click(step3, [stream_regularizer, slider_mirror], [file_out], api_name="mod")
             # with gr.Row():
             #     butstep3 = gr.Button("clean up", variant="primary")
