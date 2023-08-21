@@ -213,34 +213,34 @@ def step2_train_model(model, PARAMS):
         # Split some test data out
         (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
         
-        new_train_data_split = np.array_split(new_train_data, batch_size)
-        new_div_data_split = np.array_split(new_div_data, batch_size)
-        new_train_labels_split = np.array_split(new_train_labels, batch_size)
-        # train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
-        # train_loader = DataLoader(train_dataset, batch_size=batch_size)
+        # new_train_data_split = np.array_split(new_train_data, batch_size)
+        # new_div_data_split = np.array_split(new_div_data, batch_size)
+        # new_train_labels_split = np.array_split(new_train_labels, batch_size)
+        train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
+        train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
         for epoch in tqdm(range(EPOCHS), desc="Epoch"):
-            total_loss = 0.0
-            # for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
-            for batch_idx in range(batch_size):
+            # total_loss = 0.0
+            for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
+            # for batch_idx in range(batch_size):
                 optimizer.zero_grad()
-                # new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
-                # outputs = model(new_train_data_batch, new_div_data_batch)
-                # loss = criterion(outputs, new_train_labels_batch)
-                outputs = model(torch.tensor(new_train_data_split[batch_idx], dtype=torch.float32, device=device), torch.tensor(new_div_data_split[batch_idx], dtype=torch.float32, device=device))
-                loss = criterion(outputs, torch.tensor(new_train_labels_split[batch_idx], dtype=torch.float32, device=device))
-                # loss.backward()
-                total_loss += loss.item()
+                new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
+                outputs = model(new_train_data_batch, new_div_data_batch)
+                loss = criterion(outputs, new_train_labels_batch)
+                # outputs = model(torch.tensor(new_train_data_split[batch_idx], dtype=torch.float32, device=device), torch.tensor(new_div_data_split[batch_idx], dtype=torch.float32, device=device))
+                # loss = criterion(outputs, torch.tensor(new_train_labels_split[batch_idx], dtype=torch.float32, device=device))
+                loss.backward()
+                # total_loss += loss.item()
                 optimizer.step()
                 if PARAMS["verbose"]:
                     print("loss: " + str(loss.item()))
 
-            epoch_loss = total_loss / batch_size
-            history["epoch"].append(epoch)
-            history["loss"].append(epoch_loss)
+            # epoch_loss = total_loss / batch_size
+            # history["epoch"].append(epoch)
+            # history["loss"].append(epoch_loss)
                 
-            if PARAMS["plot_history"]:
-                plot_history(history)
+        if PARAMS["plot_history"]:
+            plot_history(history)
         if not PARAMS["verbose"]:
             print("final loss: " + str(loss.item()))
     
