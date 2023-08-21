@@ -221,7 +221,8 @@ def step2_train_model(model, PARAMS):
 
         for epoch in tqdm(range(EPOCHS), desc="Epoch"):
             # total_loss = 0.0
-            for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
+            # for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
+            for batch in train_loader:
             # for batch_idx in range(batch_size):
                 optimizer.zero_grad()
                 new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
@@ -236,8 +237,9 @@ def step2_train_model(model, PARAMS):
                     print("loss: " + str(loss.item()))
 
             # epoch_loss = total_loss / batch_size
-            # history["epoch"].append(epoch)
+            history["epoch"].append(epoch)
             # history["loss"].append(epoch_loss)
+            history["loss"].append(loss.item())
                 
         if PARAMS["plot_history"]:
             plot_history(history)
