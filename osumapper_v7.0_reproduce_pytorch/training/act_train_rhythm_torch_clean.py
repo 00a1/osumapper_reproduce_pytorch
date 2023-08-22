@@ -308,7 +308,14 @@ def step2_train_model(model, PARAMS):
 
         # Split some test data out
         (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
-        train_dataset = TensorDataset(torch.tensor(new_train_data, dtype=torch.float32, device=device), torch.tensor(new_div_data, dtype=torch.float32, device=device), torch.tensor(new_train_labels, dtype=torch.float32, device=device))
+
+        # validation_split=0.2
+        val_size = int(0.2 * len(new_train_data))
+        train_data3, val_data3 = new_train_data[val_size:], new_train_data[:val_size]
+        train_div_data3, val_div_data3 = new_div_data[val_size:], new_div_data[:val_size]
+        train_labels3, val_labels3 = new_train_labels[val_size:], new_train_labels[:val_size]
+
+        train_dataset = TensorDataset(torch.tensor(train_data3, dtype=torch.float32, device=device), torch.tensor(train_div_data3, dtype=torch.float32, device=device), torch.tensor(train_labels3, dtype=torch.float32, device=device))
         train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
         for epoch in tqdm(range(EPOCHS), desc="Epoch"):
@@ -324,6 +331,7 @@ def step2_train_model(model, PARAMS):
                 total_loss += loss.item()
                 optimizer.step()
 
+                # Calculate batch MAE
                 batch_mae = torch.mean(torch.abs(outputs - new_train_labels_batch)).item()
                 total_mae += batch_mae
             
@@ -337,12 +345,18 @@ def step2_train_model(model, PARAMS):
             # history["loss"].append(loss.item())
             history["train_mae"].append(epoch_mae)
 
+            # Validation phase
             with torch.no_grad():
-                val_outputs = model(torch.tensor(test_data, dtype=torch.float32, device=device), torch.tensor(test_div_data, dtype=torch.float32, device=device))
-                val_loss = criterion(val_outputs, torch.tensor(test_labels, dtype=torch.float32, device=device))
-                val_mae = torch.mean(torch.abs(val_outputs - torch.tensor(test_labels, dtype=torch.float32, device=device)))
+                val_outputs = model(torch.tensor(val_data3, dtype=torch.float32, device=device), torch.tensor(val_div_data3, dtype=torch.float32, device=device))
+                val_loss = criterion(val_outputs, torch.tensor(val_labels3, dtype=torch.float32, device=device))
+                # Calculate MAE
+                val_mae = torch.mean(torch.abs(val_outputs - torch.tensor(val_labels3, dtype=torch.float32, device=device)))
                 history["val_loss"].append(val_loss.item())
                 history["val_mae"].append(val_mae.item())
+
+            # Early stopping logic
+            if len(history["val_loss"]) > 20 and np.mean(history["val_loss"][-20:]) < min(history["val_loss"]):
+                break
                 
         if PARAMS["plot_history"]:
             plot_history(history)
