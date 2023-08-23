@@ -15,7 +15,7 @@ training: https://colab.research.google.com/github/00a1/osumapper_reproduce_pyto
     - [x] rhythm model
 	- [x] rhythm model infer
 	- [ ] speed model?
-- [ ] EZ gui
+- [x] EZ gui
 - [x] GPU support
 - [ ] generate full map sets
 - [ ] more models
