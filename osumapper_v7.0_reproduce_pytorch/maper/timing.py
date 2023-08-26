@@ -2,7 +2,10 @@
 
 import numpy as np
 from os_tools import run_command
-import re
+import re, os
+
+workingdir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(workingdir)
 
 def get_timing(music_path):
     """

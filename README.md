@@ -21,7 +21,7 @@ training: https://colab.research.google.com/github/00a1/osumapper_reproduce_pyto
 - [ ] more models
 - [x] time to train est
 - [ ] reverse cross-compatibility between tensorflow and Pytorch models
-- [ ] .osu file maker
+- [x] .osu file maker
 - [ ] add spinners
 - [ ] clean helper files
 ## Why fix
