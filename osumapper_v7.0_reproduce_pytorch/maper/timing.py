@@ -1,8 +1,4 @@
-# -*- coding: utf-8 -*-
-
-#
 # Timing
-#
 
 import numpy as np
 from os_tools import run_command

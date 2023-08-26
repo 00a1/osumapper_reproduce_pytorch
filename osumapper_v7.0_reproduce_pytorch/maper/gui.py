@@ -4,10 +4,12 @@ from setup_colab import load_pretrained_model
 from act_gan_torch_clean import step6_set_gan_params, step6_run_all
 from act_newmap_prep import step4_read_new_map_gui
 import numpy as np
+from timing import get_timing
+import re
 
 # pytorch
 # from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
-    
+
 # tensorflow
 from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
@@ -91,6 +93,100 @@ def step3(stream_regularizer, slider_mirror):
     saved_osu_name = step8_save_osu_file_gui(osu_a, data)
     return saved_osu_name
 
+def get_timed_osu_file(mode, audio_file, artist, title, beatmap_creator, difficulty_name, hp, cs, ar, od, sv, sltira, input_filename = "assets/my_template.osu", output_filename = "timing.osu"):
+    with open(input_filename) as osu_file:
+        osu_text = osu_file.read()
+
+    if mode == "osu":
+        game_mode = 0
+    if mode == "taiko":
+        game_mode = 1
+    if mode == "catch":
+        game_mode = 2
+    if mode == "mania":
+        game_mode = 3
+
+    if beatmap_creator == "":
+        beatmap_creator = "osumapper"
+
+    # rdr = id3.Reader(music_path)
+    # artist = rdr.get_value("performer")
+    # if artist is None:
+    #     artist = "unknown"
+    # title = rdr.get_value("title")
+    # if title is None:
+    #     title = re.sub("\.[^\.]*$", "", os.path.basename(music_path))
+
+
+    bpm, offset = get_timing(audio_file.name)
+    osu_text = re.sub("{game_mode}", str(game_mode), osu_text)
+
+    osu_text = re.sub("{title}", title, osu_text)
+    osu_text = re.sub("{artist}", artist, osu_text)
+    osu_text = re.sub("{creator}", beatmap_creator, osu_text)
+    osu_text = re.sub("{version}", difficulty_name, osu_text)
+
+    osu_text = re.sub("{hp_drain}", f"{hp}", osu_text)
+    osu_text = re.sub("{circle_size}", f"{cs}", osu_text)
+    osu_text = re.sub("{overall_difficulty}", f"{od}", osu_text)
+    osu_text = re.sub("{approach_rate}", f"{ar}", osu_text)
+
+    osu_text = re.sub("{slider_velocity}", f"{sv}", osu_text)
+    osu_text = re.sub("{slider_tick_rate}", f"{sltira}", osu_text)
+
+    osu_text = re.sub("{offset}", f"{int(offset)}", osu_text)
+    osu_text = re.sub("{tickLength}", f"{60000 / bpm}", osu_text)
+    
+    with open(output_filename, 'w', encoding="utf8") as osu_output:
+        osu_output.write(osu_text)
+
+    return output_filename
+
+def get_timed_osu_file_mania(audio_file, artist, title, beatmap_creator, difficulty_name, hp, cs, od, input_filename = "assets/my_template.osu", output_filename = "timing.osu"):
+    with open(input_filename) as osu_file:
+        osu_text = osu_file.read()
+
+    game_mode = 3
+    ar = 5
+    sv = 1.40
+    sltira = 1
+
+    if beatmap_creator == "":
+        beatmap_creator = "osumapper"
+
+    # rdr = id3.Reader(music_path)
+    # artist = rdr.get_value("performer")
+    # if artist is None:
+    #     artist = "unknown"
+    # title = rdr.get_value("title")
+    # if title is None:
+    #     title = re.sub("\.[^\.]*$", "", os.path.basename(music_path))
+
+
+    bpm, offset = get_timing(audio_file.name)
+    osu_text = re.sub("{game_mode}", str(game_mode), osu_text)
+
+    osu_text = re.sub("{title}", title, osu_text)
+    osu_text = re.sub("{artist}", artist, osu_text)
+    osu_text = re.sub("{creator}", beatmap_creator, osu_text)
+    osu_text = re.sub("{version}", difficulty_name, osu_text)
+
+    osu_text = re.sub("{hp_drain}", f"{hp}", osu_text)
+    osu_text = re.sub("{circle_size}", f"{cs}", osu_text)
+    osu_text = re.sub("{overall_difficulty}", f"{od}", osu_text)
+    osu_text = re.sub("{approach_rate}", f"{ar}", osu_text)
+
+    osu_text = re.sub("{slider_velocity}", f"{sv}", osu_text)
+    osu_text = re.sub("{slider_tick_rate}", f"{sltira}", osu_text)
+
+    osu_text = re.sub("{offset}", f"{int(offset)}", osu_text)
+    osu_text = re.sub("{tickLength}", f"{60000 / bpm}", osu_text)
+    
+    with open(output_filename, 'w', encoding="utf8") as osu_output:
+        osu_output.write(osu_text)
+
+    return output_filename
+
 with gr.Blocks(title="WebUI") as app:
     gr.Markdown(value="sota Sota Fujimori music(☆>5.0) vtuber(☆4.0-5.3) inst(☆3.5-6.5) tvsize(☆3.5-5.0 BPM140-190) hard(☆<3.5 BPM140-190) normal(☆<2.7 BPM140-190) lowbpm(☆3-4.5 BPM<140) taiko experimental(☆3-6) catch experimental(☆3-6) mytf8star(☆8)")
     with gr.Tabs():
@@ -144,6 +240,43 @@ with gr.Blocks(title="WebUI") as app:
         # with gr.TabItem("taiko"):
         # with gr.TabItem("mania"):
         # with gr.TabItem("catch"):
+        with gr.TabItem("empty .osu file maker"):
+            # with gr.Row():
+            with gr.TabItem("osu"):
+                mode = gr.Radio(label="mode", choices=["osu", "taiko", "catch"], value="osu", interactive=True)
+                audio_file = gr.File(label="Drop your Audio file here")
+                with gr.Row():
+                    with gr.Column():
+                        artist = gr.Textbox(label="Artist", value="", interactive=True)
+                        title = gr.Textbox(label="Title", value="", interactive=True)
+                        beatmap_creator = gr.Textbox(label="Beatmap Creator", value="", interactive=True)
+                        difficulty_name = gr.Textbox(label="Difficulty Name", value="", interactive=True)
+                    with gr.Column():
+                        hp = gr.Slider(minimum=0, maximum=10, value=5, step=0.1, label="HP Drain Rate", interactive=True)
+                        cs = gr.Slider(minimum=2, maximum=7, value=5, step=0.1, label="Circle Size", interactive=True)
+                        ar = gr.Slider(minimum=0, maximum=10, value=5, step=0.1, label="Approach Rate", interactive=True)
+                        od = gr.Slider(minimum=0, maximum=10, value=5, step=0.1, label="Overall Difficulty", interactive=True)
+                        sv = gr.Slider(minimum=0.4, maximum=3.60, value=1.40, step=0.1, label="Slider Velocity", interactive=True)
+                        sltira = gr.Slider(minimum=1, maximum=4, value=1, step=1, label="Slider Tick Rate", interactive=True)
+                butmake = gr.Button("make .osu file", variant="primary")
+                file_out2 = gr.File(interactive=False, label="map file output")
+                butmake.click(get_timed_osu_file, [mode, audio_file, artist, title, beatmap_creator, difficulty_name, hp, cs, ar, od, sv, sltira], [file_out2], api_name="make")
+            with gr.TabItem("mania"):
+                audio_file2 = gr.File(label="Drop your Audio file here")
+                with gr.Row():
+                    with gr.Column():
+                        artist2 = gr.Textbox(label="Artist", value="", interactive=True)
+                        title2 = gr.Textbox(label="Title", value="", interactive=True)
+                        beatmap_creator2 = gr.Textbox(label="Beatmap Creator", value="", interactive=True)
+                        difficulty_name2 = gr.Textbox(label="Difficulty Name", value="", interactive=True)
+                    with gr.Column():
+                        hp2 = gr.Slider(minimum=0, maximum=10, value=5, step=0.1, label="HP Drain Rate", interactive=True)
+                        key_count = gr.Slider(minimum=1, maximum=9, value=5, step=1, label="Key Count", interactive=True)
+                        od2 = gr.Slider(minimum=0, maximum=10, value=5, step=0.1, label="Overall Difficulty", interactive=True)
+                butmake2 = gr.Button("make .osu file", variant="primary")
+                file_out3 = gr.File(interactive=False, label="map file output")
+                butmake2.click(get_timed_osu_file_mania, [audio_file2, artist2, title2, beatmap_creator2, difficulty_name2, hp2, key_count, od2], [file_out3], api_name="make2")
+        
 
     if cmd_opts.colab:
         app.queue(concurrency_count=511, max_size=1022).launch(share=True)
