@@ -392,7 +392,7 @@ def reset_model_weights(models):
 
 # loss function for mmodel
 # losses = [AlwaysZeroCustomLoss(), BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"]), GenerativeCustomLoss()]
-loss_weights = [1e-8, GAN_PARAMS["box_loss_weight"], 1]
+# loss_weights = [1e-8, GAN_PARAMS["box_loss_weight"], 1]
 
 #https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/gan/gan.py
 #https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
@@ -433,9 +433,9 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     discriminator = classifier_model
     # Loss functions
     criterion = nn.MSELoss() # Discriminator/Classifier + Generator not MGenerator
-    g_loss1 = AlwaysZeroCustomLoss()
-    g_loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"])
-    g_loss3 = GenerativeCustomLoss()
+    # g_loss1 = AlwaysZeroCustomLoss()
+    # g_loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"])
+    # g_loss3 = GenerativeCustomLoss()
 
     # Optimizers
     # optimizer = optim.Adam(model.parameters(), lr=0.002)#0.002 gen
@@ -473,10 +473,14 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         for _ in range(g_multiplier):
             optimizer_g.zero_grad()
             output = generator(ginput_noise)
-            print(output)
-            loss1 = g_loss1(output, glabel[0]) * loss_weights[0]
-            loss2 = g_loss2(output, glabel[1]) * loss_weights[1]
-            loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
+            # print(output) output is a tuple of output[0] = generator out | output[1] = mapping_layer out | output[2] = discriminator out
+            # loss1 = g_loss1(output, glabel[0]) * loss_weights[0]
+            # loss2 = g_loss2(output, glabel[1]) * loss_weights[1]
+            # loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
+
+            loss1 = AlwaysZeroCustomLoss() * 1e-8 # loss1 = g_loss1(output, glabel[0]) * 1e-8
+            loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"], output[1]) * GAN_PARAMS["box_loss_weight"] # loss2 = g_loss2(output, glabel[1]) * GAN_PARAMS["box_loss_weight"]
+            loss3 = GenerativeCustomLoss(output[2]) * 1 # loss3 = g_loss3(output, glabel[2]) * 1
             g_loss = loss1+loss2+loss3
             # g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
             # g_loss = criterion(output, glabel)
