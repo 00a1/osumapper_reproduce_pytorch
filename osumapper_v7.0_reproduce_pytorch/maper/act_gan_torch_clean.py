@@ -473,6 +473,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         for _ in range(g_multiplier):
             optimizer_g.zero_grad()
             output = generator(ginput_noise)
+            print(output)
             loss1 = g_loss1(output, glabel[0]) * loss_weights[0]
             loss2 = g_loss2(output, glabel[1]) * loss_weights[1]
             loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
