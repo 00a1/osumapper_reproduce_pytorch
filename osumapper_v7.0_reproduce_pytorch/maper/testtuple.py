@@ -673,9 +673,10 @@ sm = tensor([[[0.5000],
 
 def GenerativeCustomLoss(y_pred):
     classification = y_pred
-    if classification.dim() == 1:
-        classification = classification.unsqueeze(0)  # Convert to a 2D tensor if it's 1D
-    loss1 = 1 - torch.mean(classification, dim=1)
+    # if classification.dim() == 1:
+        # classification = classification.unsqueeze(0)  # Convert to a 2D tensor if it's 1D
+    # loss1 = 1 - torch.mean(classification, dim=1)
+    loss1 = 1 - torch.mean(classification)
     return loss1
 
 

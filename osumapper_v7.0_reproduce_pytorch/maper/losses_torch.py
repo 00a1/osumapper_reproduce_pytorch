@@ -39,10 +39,10 @@ def inblock_loss(vg, border, value):
 #         return loss1
 
 def GenerativeCustomLoss(y_pred):
-    classification = y_pred
-    if classification.dim() == 1:
-        classification = classification.unsqueeze(0)  # Convert to a 2D tensor if it's 1D
-    loss1 = 1 - torch.mean(classification, dim=1)
+    # classification = y_pred
+    # if classification.dim() == 1:
+        # classification = classification.unsqueeze(0)  # Convert to a 2D tensor if it's 1D
+    loss1 = 1 - torch.mean(y_pred)
     return loss1
 
 # class BoxCustomLoss(nn.Module):
