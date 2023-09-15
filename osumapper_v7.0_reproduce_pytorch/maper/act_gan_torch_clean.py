@@ -478,10 +478,12 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             # loss2 = g_loss2(output, glabel[1]) * loss_weights[1]
             # loss3 = g_loss3(output, glabel[2]) * loss_weights[2]
 
+            # might remove weights later
             loss1 = AlwaysZeroCustomLoss() * 1e-8 # loss1 = g_loss1(output, glabel[0]) * 1e-8
             loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"], output[1]) * GAN_PARAMS["box_loss_weight"] # loss2 = g_loss2(output, glabel[1]) * GAN_PARAMS["box_loss_weight"]
             loss3 = GenerativeCustomLoss(output[2]) * 1 # loss3 = g_loss3(output, glabel[2]) * 1
             g_loss = loss1+loss2+loss3
+            print(g_loss)
             # g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
             # g_loss = criterion(output, glabel)
             g_loss.backward()
