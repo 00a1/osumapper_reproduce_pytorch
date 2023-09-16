@@ -511,8 +511,8 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         # ---------------------
         for _ in range(c_multiplier):
             optimizer_c.zero_grad()
-            print("data " + actual_train_data)
-            print("lab " + actual_train_labels)
+            print("data " + str(actual_train_data))
+            print("lab " + str(actual_train_labels))
             output2 = discriminator(actual_train_data)
             c_loss = criterion(output2, actual_train_labels)
             c_loss.backward(retain_graph=True)
