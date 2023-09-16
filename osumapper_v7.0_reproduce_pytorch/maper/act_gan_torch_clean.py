@@ -505,14 +505,17 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         rn = np.random.randint(0, special_train_data.shape[0], (c_true_batch,))
         actual_train_data = torch.cat((new_false_maps, randfalse_maps, torch.tensor(special_train_data[rn], dtype=torch.float32, device=device)), dim=0)
         actual_train_labels = torch.cat((new_false_labels, randfalse_labels, torch.tensor(special_train_labels[rn], dtype=torch.float32, device=device)), dim=0)
+        print("rn " + str(rn))
+        print("std " + str(torch.tensor(special_train_data[rn], dtype=torch.float32, device=device)))
+        print("stl " + str(torch.tensor(special_train_labels[rn], dtype=torch.float32, device=device)))
 
         # ---------------------
         #  Train Discriminator
         # ---------------------
         for _ in range(c_multiplier):
             optimizer_c.zero_grad()
-            print("data " + str(actual_train_data))
-            print("lab " + str(actual_train_labels))
+            # print("data " + str(actual_train_data))
+            # print("lab " + str(actual_train_labels))
             output2 = discriminator(actual_train_data)
             c_loss = criterion(output2, actual_train_labels)
             c_loss.backward(retain_graph=True)
