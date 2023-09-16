@@ -46,40 +46,17 @@ def step6_set_gan_params(params):
     global GAN_PARAMS
     GAN_PARAMS = {**GAN_PARAMS, **params}
 
-# class ClassifierModel(nn.Module):
-#     """
-#     Classifier model to determine if a map is "fake" (generated) or "true" (part of the training set).
-#     Haven't experimented with the structures a lot, so you might want to try them.
-#     Using LSTM instead of SimpleRNN seems to yield very weird results.
-#     """
-#     def __init__(self, input_size):
-#         super(ClassifierModel, self).__init__()
-#         self.rnn_layer = nn.RNN(input_size, 64, batch_first=True)
-#         self.dense_layer1 = nn.Linear(64, 64)
-#         self.dense_layer2 = nn.Linear(64, 64)
-#         self.dense_layer3 = nn.Linear(64, 64)
-#         self.dense_layer4 = nn.Linear(64, 1)
-
-#     def forward(self, x):
-#         rnn_output, _ = self.rnn_layer(x)
-#         dense1 = self.dense_layer1(rnn_output)
-#         dense2 = torch.relu(self.dense_layer2(dense1))
-#         dense3 = torch.tanh(self.dense_layer3(dense2))
-#         dense4 = torch.relu(self.dense_layer4(dense3))
-#         output = torch.tanh(dense4)
-#         output = (output + 1) / 2
-#         return output
-    
-
 class ClassifierModel(nn.Module):
     """
     Classifier model to determine if a map is "fake" (generated) or "true" (part of the training set).
     Haven't experimented with the structures a lot, so you might want to try them.
     Using LSTM instead of SimpleRNN seems to yield very weird results.
+    sigmoid = 0 - 1
+    tanh = -1 - 1
     """
     def __init__(self, input_size):
         super(ClassifierModel, self).__init__()
-        self.rnn_layer = nn.RNN(input_size, 64)
+        self.rnn_layer = nn.RNN(input_size, 64)# , batch_first=True
         self.dense_layer1 = nn.Linear(64, 64)
         self.dense_layer2 = nn.Linear(64, 64)
         self.dense_layer3 = nn.Linear(64, 64)
@@ -91,10 +68,10 @@ class ClassifierModel(nn.Module):
         dense2 = torch.relu(self.dense_layer2(dense1))
         dense3 = torch.tanh(self.dense_layer3(dense2))
         dense4 = torch.relu(self.dense_layer4(dense3))
-        # output = torch.sigmoid(dense4)
-        # print(output)
+        # output = torch.sigmoid(dense4)# try sigmoid
         output = torch.tanh(dense4)
         output = (output + 1) / 2
+        # print(output)
         return output
 
 def inblock_trueness(vg):
@@ -379,7 +356,7 @@ class MixedModel(nn.Module):
     def forward(self, inp):
         interm1 = self.generator(inp)
         interm2 = self.mapping_layer(interm1)
-        with torch.no_grad():
+        with torch.no_grad():# Set the discriminator to be untrainable
             end = self.discriminator(interm2)
         return interm1, interm2, end
 
@@ -511,7 +488,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             loss2 = BoxCustomLoss(GAN_PARAMS["box_loss_border"], GAN_PARAMS["box_loss_value"], output[1]) * GAN_PARAMS["box_loss_weight"] # loss2 = g_loss2(output, glabel[1]) * GAN_PARAMS["box_loss_weight"]
             loss3 = GenerativeCustomLoss(output[2]) * 1 # loss3 = g_loss3(output, glabel[2]) * 1
             g_loss = loss1+loss2+loss3
-            print(g_loss)
+            # print(g_loss)
             # g_loss = criterion(output[0], glabel[0]) + criterion(output[1], glabel[1]) + criterion(output[2], glabel[2])
             # g_loss = criterion(output, glabel)
             g_loss.backward()
