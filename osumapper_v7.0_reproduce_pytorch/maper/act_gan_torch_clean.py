@@ -376,8 +376,8 @@ def make_models():
     # mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size)
 
     # Set the discriminator to be untrainable
-    for param in mmodel.discriminator.parameters():
-        param.requires_grad = False
+    #for param in mmodel.discriminator.parameters():
+    #    param.requires_grad = False
 
     default_weights = mmodel.state_dict()
     return gmodel, mapping_layer, classifier_model, mmodel, default_weights
