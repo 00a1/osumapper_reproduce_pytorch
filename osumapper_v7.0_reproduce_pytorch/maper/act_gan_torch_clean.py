@@ -91,8 +91,10 @@ class ClassifierModel(nn.Module):
         dense2 = torch.relu(self.dense_layer2(dense1))
         dense3 = torch.tanh(self.dense_layer3(dense2))
         dense4 = torch.relu(self.dense_layer4(dense3))
-        output = torch.sigmoid(dense4)
+        # output = torch.sigmoid(dense4)
         # print(output)
+        output = torch.tanh(dense4)
+        output = (output + 1) / 2
         return output
 
 def inblock_trueness(vg):
