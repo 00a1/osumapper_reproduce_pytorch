@@ -57,8 +57,8 @@ def GenerativeCustomLoss(y_pred):
 #         return inblock_loss(map_part[0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[4:6], self.loss_border, self.loss_value)
 #         #return inblock_loss(map_part[:, :, 0:2], self.loss_border, self.loss_value) + inblock_loss(map_part[:, :, 4:6], self.loss_border, self.loss_value)
 
-def BoxCustomLoss(loss_border, loss_value, y_pred):
-    map_part = y_pred
+def BoxCustomLoss(loss_border, loss_value, map_part):
+    # map_part = y_pred
     return inblock_loss(map_part[0:2], loss_border, loss_value) + inblock_loss(map_part[4:6], loss_border, loss_value)
 
 # class AlwaysZeroCustomLoss(nn.Module):

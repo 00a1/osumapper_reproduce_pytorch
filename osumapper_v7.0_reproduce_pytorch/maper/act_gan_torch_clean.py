@@ -352,7 +352,8 @@ class MixedModel(nn.Module):
     def forward(self, inp):
         interm1 = self.generator(inp)
         interm2 = self.mapping_layer(interm1)
-        end = self.discriminator(interm2)
+        with torch.no_grad():
+            end = self.discriminator(interm2)
         return interm1, interm2, end
 
 def make_models():

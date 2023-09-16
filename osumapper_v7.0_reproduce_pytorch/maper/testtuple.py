@@ -749,4 +749,15 @@ def BoxCustomLoss(loss_border, loss_value, y_pred):
 # print(torch.tensor(0.0, dtype=torch.float32) * 1e-8)
 
 
-print(torch.tensor(0.0, dtype=torch.float32) * 1e-8 + BoxCustomLoss(0.1, 0.4, MappingLayeroutsmall) * 1 + GenerativeCustomLoss(f) * 1)
+# print(torch.tensor(0.0, dtype=torch.float32) * 1e-8 + BoxCustomLoss(0.1, 0.4, MappingLayeroutsmall) * 1 + GenerativeCustomLoss(f) * 1)
+# output1 = torch.tanh(tensor(-1))#tensor(0.1192)
+# output1 = torch.tanh(tensor(0))#tensor(0.5000)
+# output1 = torch.tanh(tensor(-2))#tensor(0.0180)
+# output1 = torch.tanh(tensor(-3))#tensor(0.0025)
+output1 = torch.sigmoid(tensor(9.7))
+# output = (output1 + 1) / 2
+print(output1)
+
+output1 = torch.tanh(tensor(9.7))
+output = (output1 + 1) / 2
+print(output)
