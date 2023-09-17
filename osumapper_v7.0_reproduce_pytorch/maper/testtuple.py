@@ -741,7 +741,72 @@ def inblock_loss(vg, border, value):
 # box_loss_weight 1
 def BoxCustomLoss(loss_border, loss_value, y_pred):
     map_part = y_pred
-    return inblock_loss(map_part[0:2], loss_border, loss_value) + inblock_loss(map_part[4:6], loss_border, loss_value)
+    # return inblock_loss(map_part[0:2], loss_border, loss_value) + inblock_loss(map_part[4:6], loss_border, loss_value)# tensor(0.6093)
+    return inblock_loss(map_part[:, :, 0:2], loss_border, loss_value) + inblock_loss(map_part[:, :, 4:6], loss_border, loss_value)# tensor(0.0089)
+
+print(MappingLayeroutsmall[0:2])
+print("--------------------------------")
+print(MappingLayeroutsmall[:, :, 0:2])
+
+
+
+# tensor([[[ 0.2946,  0.6321, -0.8698,  0.4934,  0.2946,  0.6321],  
+#          [ 0.2652,  0.3746, -0.1506, -0.9886,  0.2652,  0.3746],  
+#          [ 0.1417,  0.5764, -0.6323,  0.7747,  0.1417,  0.5764],  
+#          [ 0.4492,  0.2834, -0.9267,  0.3759,  0.4492,  0.2834],  
+#          [ 0.3504,  0.0588, -0.5059, -0.8626,  0.3504,  0.0588],  
+#          [ 0.1553,  0.0696, -0.9991, -0.0413,  0.1553,  0.0696]], 
+
+#         [[ 0.2998,  0.6436, -0.8433,  0.5375,  0.2998,  0.6436],  
+#          [ 0.2619,  0.3881, -0.1939, -0.9810,  0.2619,  0.3881],  
+#          [ 0.1633,  0.6129, -0.5046,  0.8633,  0.1633,  0.6129],  
+#          [ 0.4591,  0.3233, -0.9345,  0.3561,  0.4591,  0.3233],
+#          [ 0.3672,  0.0935, -0.4706, -0.8824,  0.3672,  0.0935],
+#          [ 0.1723,  0.1107, -0.9978,  0.0658,  0.1723,  0.1107]]])
+# --------------------------------
+# tensor([[[0.2946, 0.6321],
+#          [0.2652, 0.3746],
+#          [0.1417, 0.5764],
+#          [0.4492, 0.2834],
+#          [0.3504, 0.0588],
+#          [0.1553, 0.0696]],
+
+#         [[0.2998, 0.6436],
+#          [0.2619, 0.3881],
+#          [0.1633, 0.6129],
+#          [0.4591, 0.3233],
+#          [0.3672, 0.0935],
+#          [0.1723, 0.1107]],
+
+#         [[0.2919, 0.6256],
+#          [0.2243, 0.3813],
+#          [0.1106, 0.5930],
+#          [0.4921, 0.3189],
+#          [0.3837, 0.1022],
+#          [0.1886, 0.1139]],
+
+#         [[0.2881, 0.6155],
+#          [0.2320, 0.3660],
+#          [0.2119, 0.6251],
+#          [0.4776, 0.3525],
+#          [0.3971, 0.1152],
+#          [0.2063, 0.1704]],
+
+#         [[0.2937, 0.6300],
+#          [0.2443, 0.3780],
+#          [0.1952, 0.6301],
+#          [0.4755, 0.3612],
+#          [0.3935, 0.1248],
+#          [0.2012, 0.1707]],
+
+#         [[0.2989, 0.6417],
+#          [0.2498, 0.3897],
+#          [0.1679, 0.6261],
+#          [0.4723, 0.3236],
+#          [0.3710, 0.1010],
+#          [0.1757, 0.1040]]])
+
+
 
 # print(BoxCustomLoss(0.1, 0.4, MappingLayeroutsmall) * 1)
 # print(BoxCustomLoss(0.1, 0.4, MappingLayeroutsmall))
@@ -754,10 +819,10 @@ def BoxCustomLoss(loss_border, loss_value, y_pred):
 # output1 = torch.tanh(tensor(0))#tensor(0.5000)
 # output1 = torch.tanh(tensor(-2))#tensor(0.0180)
 # output1 = torch.tanh(tensor(-3))#tensor(0.0025)
-output1 = torch.sigmoid(tensor(9.7))
+# output1 = torch.sigmoid(tensor(9.7))
 # output = (output1 + 1) / 2
-print(output1)
+# print(output1)
 
-output1 = torch.tanh(tensor(9.7))
-output = (output1 + 1) / 2
-print(output)
+# output1 = torch.tanh(tensor(9.7))
+# output = (output1 + 1) / 2
+# print(output)

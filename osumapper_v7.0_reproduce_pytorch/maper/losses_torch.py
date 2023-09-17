@@ -15,7 +15,7 @@ def GenerativeCustomLoss(y_pred):
     return loss1
 
 def BoxCustomLoss(loss_border, loss_value, map_part):
-    return inblock_loss(map_part[0:2], loss_border, loss_value) + inblock_loss(map_part[4:6], loss_border, loss_value)
+    return inblock_loss(map_part[:, :, 0:2], loss_border, loss_value) + inblock_loss(map_part[:, :, 4:6], loss_border, loss_value)
 
 def AlwaysZeroCustomLoss():
     return torch.tensor(0.0, dtype=torch.float32, device=device)

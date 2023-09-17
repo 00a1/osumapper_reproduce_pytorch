@@ -52,7 +52,7 @@ class ClassifierModel(nn.Module):
     Haven't experimented with the structures a lot, so you might want to try them.
     Using LSTM instead of SimpleRNN seems to yield very weird results.
     sigmoid = 0 - 1
-    tanh = -1 - 1
+    tanh = -1 - 0 - 1
     """
     def __init__(self, input_size):
         super(ClassifierModel, self).__init__()
@@ -379,19 +379,15 @@ def make_models():
     # mapping_layer = PyTorchCustomMappingLayer(extvar)
     # mmodel = MixedModel(gmodel, mapping_layer, classifier_model, g_input_size)
 
-    # Set the discriminator to be untrainable
-    #for param in mmodel.discriminator.parameters():
-    #    param.requires_grad = False
-
     default_weights = mmodel.state_dict()
     return gmodel, mapping_layer, classifier_model, mmodel, default_weights
 
 def set_extvar(models, extvar):
-    gmodel, mapping_layer, classifier_model, mmodel, default_weights = models
+    _gmodel, mapping_layer, _classifier_model, _mmodel, _default_weights = models
     mapping_layer.set_extvar(extvar)
 
 def reset_model_weights(models):
-    gmodel, mapping_layer, classifier_model, mmodel, default_weights = models
+    _gmodel, _mapping_layer, _classifier_model, mmodel, default_weights = models
     weights = default_weights
     mmodel.load_state_dict(weights)
 
@@ -455,11 +451,11 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
 
         ginput_noise = torch.rand(g_batch, g_input_size, device=device)
         # glabel = [torch.zeros((g_batch, note_group_size * 4)), torch.ones((g_batch,)), torch.ones((g_batch,))]# old
-        glabel = [
-            torch.zeros((g_batch, note_group_size * 4), requires_grad=True, device=device),
-            torch.ones((g_batch,), requires_grad=True, device=device),
-            torch.ones((g_batch,), requires_grad=True, device=device)
-        ]
+        # glabel = [
+        #     torch.zeros((g_batch, note_group_size * 4), requires_grad=True, device=device),
+        #     torch.ones((g_batch,), requires_grad=True, device=device),
+        #     torch.ones((g_batch,), requires_grad=True, device=device)
+        # ]
         
         # -----------------
         #  Train Generator
@@ -527,7 +523,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             optimizer_c.step()
 
         if GAN_PARAMS["verbose"]:
-            print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss))# g_loss might be broken
+            print("Group {}, Epoch {}: G loss: {} vs. C loss: {}".format(group_id, 1+i, g_loss.item(), c_loss))# g_loss might be broken (fixed 9/15/23)
 
         # make a new set of notes
         res_noise = torch.rand(1, g_input_size, device=device)
