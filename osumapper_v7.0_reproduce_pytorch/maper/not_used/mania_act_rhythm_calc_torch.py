@@ -1,15 +1,17 @@
-# -*- coding: utf-8 -*-
-
-#
 # Step 6 action script
-#
 
-import tensorflow as tf
-from tensorflow import keras
+# import tensorflow as tf
+# from tensorflow import keras
 import numpy as np
 import os, re, json
+import torch
+import torch.nn as nn
 
-divisor = 4;
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
+divisor = 4
+time_interval = 16
 
 def read_npz(fn):
     with np.load(fn) as data:
@@ -38,21 +40,65 @@ def divisor_array(k):
 def step5_set_params(note_density=0.24, hold_favor=0, divisor_favor=[0] * divisor, hold_max_ticks=8, hold_min_return=1, rotate_mode=4):
     return note_density, hold_favor, divisor_favor, hold_max_ticks, hold_min_return, rotate_mode;
 
+class Model(nn.Module):
+    def __init__(self, input_shape, div_shape, label_shape):
+        super(Model, self).__init__()
+        self.conv1 = nn.Conv2d(input_shape[1], 16, kernel_size=(2, 2))
+        self.pool1 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2), padding=(0, 1))
+        self.dropout1 = nn.Dropout(0.3)
+        self.conv2 = nn.Conv2d(16, 16, kernel_size=(1, 1))
+        self.pool2 = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2), padding=(0, 1))
+        self.dropout2 = nn.Dropout(0.3)
+        self.flatten = nn.Flatten()
+        self.lstm = nn.LSTM(input_size=496, hidden_size=64, batch_first=True)
+        self.fc1 = nn.Linear(71, 71)
+        self.fc2 = nn.Linear(71, 71)
+        self.fc3 = nn.Linear(71, label_shape[1])
+
+    def forward(self, wav_data, div_data):
+        x = self.conv1(wav_data)
+        x = torch.relu(self.pool1(x))
+        x = self.dropout1(x)
+        x = self.conv2(x)
+        x = torch.relu(self.pool2(x))
+        x = self.dropout2(x)
+        x = self.flatten(x)
+        lstm_input = x.view(x.size(0), -1)
+        lstm_input = lstm_input.unsqueeze(1).repeat(1, time_interval, 1)
+        lstm_out, _ = self.lstm(lstm_input)
+        div_data = div_data.view(div_data.size(0), -1)
+        concatenated = torch.cat((lstm_out[:, -1, :], div_data), dim=1)
+        x = self.fc1(concatenated)
+        x = self.fc2(x)
+        x = self.fc3(x)
+        return x
+
 def step5_load_model(model_file="saved_rhythm_model"):
     # Fallback for local version
     if not os.path.isfile(model_file) and model_file == "saved_rhythm_model":
         print("Model not trained! Trying default model...")
         model_file = "models/default/rhythm_model"
 
-    model = tf.keras.models.load_model(
-        model_file,
-        custom_objects=None,
-        compile=False
-    );
-    model.compile(loss='mse',
-                optimizer=tf.optimizers.RMSprop(0.001),
-                metrics=[keras.metrics.mae]);
-    return model;
+    model = Model((-1, 7, 32, 2), (-1, 3 + divisor), (-1, 5)).to(device)
+    model.load_state_dict(torch.load(model_file))
+    return model
+
+
+# def step5_load_model(model_file="saved_rhythm_model"):
+#     # Fallback for local version
+#     if not os.path.isfile(model_file) and model_file == "saved_rhythm_model":
+#         print("Model not trained! Trying default model...")
+#         model_file = "models/default/rhythm_model"
+
+#     model = tf.keras.models.load_model(
+#         model_file,
+#         custom_objects=None,
+#         compile=False
+#     );
+#     model.compile(loss='mse',
+#                 optimizer=tf.optimizers.RMSprop(0.001),
+#                 metrics=[keras.metrics.mae]);
+#     return model;
 
 def step5_load_npz():
     fn = "mapthis.npz";
@@ -62,9 +108,108 @@ def step5_load_npz():
 def step5_predict_notes(model, npz, params):
 
     # Get npz data
+    test_data, div_data, ticks, timestamps = npz
+
+    note_density, hold_favor, divisor_favor, hold_max_ticks, hold_min_return, rotate_mode = params
+
+    # Make time intervals from test data
+    # time_interval = 16;
+    # if test_data.shape[0]%time_interval > 0:
+    #     test_data = test_data[:-(test_data.shape[0]%time_interval)];
+    #     div_data = div_data[:-(div_data.shape[0]%time_interval)];
+    # test_data2 = np.reshape(test_data, (-1, time_interval, test_data.shape[1], test_data.shape[2], test_data.shape[3]))
+    # div_data2 = np.reshape(div_data, (-1, time_interval, div_data.shape[1]))
+
+    # test_predictions = model.predict([test_data2, div_data2]);
+    # preds = test_predictions.reshape(-1, test_predictions.shape[2]);
+
+
+    test_data = torch.tensor(test_data, dtype=torch.float32, device=device)
+    div_data = torch.tensor(div_data, dtype=torch.float32, device=device)
+
+    model.eval()
+    with torch.no_grad():
+        test_predictions = model(test_data, div_data)
+
+    preds = test_predictions.cpu().numpy().reshape(-1, test_predictions.shape[1])
+
+
+    # # Favor sliders a little
+    # preds[:, 2] += hold_favor;
+    # divs = div_data2.reshape(-1, div_data2.shape[2]);
+    # margin = np.sum([divisor_favor[k] * divs[:, k] for k in range(0, divisor)]);
+
+    # preds[:, 0] += margin;
+
+    # # Predict is_obj using note_density
+    # obj_preds = preds[:, 0];
+    # target_count = np.round(note_density * obj_preds.shape[0]).astype(int);
+    # borderline = np.sort(obj_preds)[obj_preds.shape - target_count];
+    # is_obj_pred = np.expand_dims(np.where(preds[:, 0] > borderline, 1, 0), axis=1);
+
+    # obj_type_pred = np.sign(preds[:, 1:4] - np.tile(np.expand_dims(np.max(preds[:, 1:4], axis=1), 1), (1, 3))) + 1;
+    # others_pred = (1 + np.sign(preds[:, 4:test_predictions.shape[1]] + 0.5)) / 2;
+    # another_pred_result = np.concatenate([is_obj_pred, is_obj_pred * obj_type_pred, others_pred], axis=1);
+
+    # print("{} notes predicted.".format(np.sum(is_obj_pred)));
+
+    # Favor sliders a little
+    preds[:, 2] += hold_favor
+    divs = div_data.cpu().numpy().reshape(-1, div_data.shape[1])
+    margin = np.sum([divisor_favor[k] * divs[:, k] for k in range(0, divisor)])
+    preds[:, 0] += margin
+
+    # Predict is_obj using note_density
+    obj_preds = preds[:, 0]
+    target_count = np.round(note_density * obj_preds.shape[0]).astype(int)
+    borderline = np.sort(obj_preds)[obj_preds.shape - target_count]
+    is_obj_pred = np.expand_dims(np.where(preds[:, 0] > borderline, 1, 0), axis=1)
+    obj_type_pred = np.sign(preds[:, 1:4] - np.tile(np.expand_dims(np.max(preds[:, 1:4], axis=1), 1), (1, 3))) + 1
+    others_pred = (1 + np.sign(preds[:, 4:test_predictions.shape[0]] + 0.5)) / 2
+    another_pred_result = np.concatenate([is_obj_pred, is_obj_pred * obj_type_pred, others_pred], axis=1)
+    print("{} notes predicted.".format(np.sum(is_obj_pred)))
+
+    return is_obj_pred, another_pred_result, timestamps, ticks, div_data.cpu().numpy()
+
+#main new
+def step5_predict_notes(model, npz, params):
+    test_data, div_data, ticks, timestamps = npz
+    dist_multiplier, note_density, slider_favor, divisor_favor, _slider_max_ticks = params
+
+    test_data = torch.tensor(test_data, dtype=torch.float32, device=device)
+    div_data = torch.tensor(div_data, dtype=torch.float32, device=device)
+
+    model.eval()
+    with torch.no_grad():
+        test_predictions = model(test_data, div_data)
+
+    preds = test_predictions.cpu().numpy().reshape(-1, test_predictions.shape[1])
+
+    # Favor sliders a little
+    preds[:, 2] += slider_favor
+    divs = div_data.cpu().numpy().reshape(-1, div_data.shape[1])
+    margin = np.sum([divisor_favor[k] * divs[:, k] for k in range(0, divisor)])
+    preds[:, 0] += margin
+
+    # Predict is_obj using note_density
+    obj_preds = preds[:, 0]
+    target_count = np.round(note_density * obj_preds.shape[0]).astype(int)
+    borderline = np.sort(obj_preds)[obj_preds.shape - target_count]
+    is_obj_pred = np.expand_dims(np.where(preds[:, 0] > borderline, 1, 0), axis=1)
+    obj_type_pred = np.sign(preds[:, 1:4] - np.tile(np.expand_dims(np.max(preds[:, 1:4], axis=1), 1), (1, 3))) + 1
+    others_pred = (1 + np.sign(preds[:, 4:test_predictions.shape[0]] + 0.5)) / 2
+    another_pred_result = np.concatenate([is_obj_pred, is_obj_pred * obj_type_pred, others_pred], axis=1)
+    print("{} notes predicted.".format(np.sum(is_obj_pred)))
+    return is_obj_pred, another_pred_result, timestamps, ticks, div_data.cpu().numpy(), dist_multiplier
+
+
+#main old
+def step5_predict_notes(model, npz, params):
+
+    # Get npz data
     test_data, div_data, ticks, timestamps = npz;
 
-    note_density, hold_favor, divisor_favor, hold_max_ticks, hold_min_return, rotate_mode = params;
+    dist_multiplier, note_density, slider_favor, divisor_favor, slider_max_ticks = params;
 
     # Make time intervals from test data
     time_interval = 16;
@@ -78,7 +223,7 @@ def step5_predict_notes(model, npz, params):
     preds = test_predictions.reshape(-1, test_predictions.shape[2]);
 
     # Favor sliders a little
-    preds[:, 2] += hold_favor;
+    preds[:, 2] += slider_favor;
     divs = div_data2.reshape(-1, div_data2.shape[2]);
     margin = np.sum([divisor_favor[k] * divs[:, k] for k in range(0, divisor)]);
 
@@ -96,7 +241,9 @@ def step5_predict_notes(model, npz, params):
 
     print("{} notes predicted.".format(np.sum(is_obj_pred)));
 
-    return is_obj_pred, another_pred_result, timestamps, ticks, div_data;
+    return is_obj_pred, another_pred_result, timestamps, ticks, div_data, dist_multiplier;
+
+# ----------------------------------------------------------------
 
 def read_key_count_from_json(file = "mapthis.json"):
     """

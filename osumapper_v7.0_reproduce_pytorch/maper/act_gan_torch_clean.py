@@ -311,18 +311,65 @@ class PyTorchCustomMappingLayer(nn.Module):
         result = construct_map_with_sliders(mapvars, extvar=extvar)
         return result
 
-def plot_current_map(inputs):
+# def plot_current_map(inputs):
+#     """
+#     This is only used in debugging.
+#     """
+#     # plot it each epoch
+#     mp = construct_map_with_sliders(inputs, extvar=extvar)
+#     # to make it clearer, add the start pos
+#     # npa = np.concatenate([[np.concatenate([extvar["start_pos"] / np.array([512, 384]), [0, 0]])], tf.stack(mp).numpy().squeeze()])
+#     npa = np.concatenate([[np.concatenate([extvar["start_pos"] / np.array([512, 384]), [0, 0]])], np.array(mp).squeeze()])
+#     fig, ax = plt.subplots()
+#     x, y = np.transpose(npa)[0:2]
+#     #x, y = np.random.rand(2, 20)
+#     line = MyLine(x, y, mfc='red', ms=12)
+#     line.text.set_color('red')
+#     line.text.set_fontsize(16)
+#     ax.add_line(line)
+#     plt.show()
+
+
+# def scale_value(value):
+#     old_min = 0.40
+#     old_max = 0.90
+#     new_min = 0.00
+#     new_max = 1.00
+#     # Scale the value from the old range to the new range
+#     old_range = old_max - old_min
+#     new_range = new_max - new_min
+#     scaled_value = ((value - old_min) / old_range) * new_range + new_min
+#     return scaled_value
+
+def plot_current_map(mp, plot_int):
     """
     This is only used in debugging.
     """
-    # plot it each epoch
-    mp = construct_map_with_sliders(inputs, extvar=extvar)
     # to make it clearer, add the start pos
-    # npa = np.concatenate([[np.concatenate([extvar["start_pos"] / np.array([512, 384]), [0, 0]])], tf.stack(mp).numpy().squeeze()])
-    npa = np.concatenate([[np.concatenate([extvar["start_pos"] / np.array([512, 384]), [0, 0]])], np.array(mp).squeeze()])
+    # cat1 = torch.cat([torch.tensor(extvar["start_pos"], dtype=torch.float32, device=device) / torch.tensor([512, 384], dtype=torch.float32, device=device), torch.tensor([0, 0, 0, 0], dtype=torch.float32, device=device)])
+    # print(cat1.size())
+    # print(cat1)
+    # npa = torch.cat([cat1.unsqueeze(0), mp.squeeze()]).detach().cpu().numpy()
+    npa = mp * torch.tensor([512, 384, 0, 0, 0, 0], dtype=torch.float32, device=device)
+    # print(npa)
+    # npa = mp.detach().cpu()
+
     fig, ax = plt.subplots()
-    x, y = np.transpose(npa)[0:2]
-    #x, y = np.random.rand(2, 20)
+    plt.xlim(0, 512)
+    plt.ylim(0, 384)
+    x, y = np.transpose(npa.detach().cpu())[0:2]
+    # x, y = np.random.rand(2, 20)
+    line = MyLine(x, y, mfc='red', ms=12)
+    line.text.set_color('red')
+    line.text.set_fontsize(16)
+    ax.add_line(line)
+    # plt.show()
+    plt.savefig(f'1000graph001{plot_int}.png')
+
+def ran_plot():
+    fig, ax = plt.subplots()
+    # x, y = torch.transpose(npa)[0:2]
+    x, y = np.random.rand(2, 20)
     line = MyLine(x, y, mfc='red', ms=12)
     line.text.set_color('red')
     line.text.set_fontsize(16)
@@ -443,6 +490,11 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
     optimizer_g = optim.Adam(generator.parameters(), lr=0.001)#0.001 mix
     optimizer_c = optim.Adam(discriminator.parameters(), lr=0.001)#0.001 class
     
+    # beta load gan
+    # print("loading gan")
+    # generator.load_state_dict(torch.load("G_beta1.pth"))
+    # discriminator.load_state_dict(torch.load("D_beta1.pth"))
+
     # ----------
     #  Training
     # ----------
@@ -492,8 +544,7 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         
         # pred_noise = np.random.random((c_false_batch, g_input_size))
         pred_noise = torch.rand(c_false_batch, g_input_size, device=device)
-        pred_input = pred_noise
-        _predicted_maps_data, new_false_maps, _predclass = generator(pred_input)
+        _predicted_maps_data, new_false_maps, _predclass = generator(pred_noise)
         # new_false_labels = np.zeros(c_false_batch)
         new_false_labels = torch.zeros(c_false_batch, device=device)
 
@@ -528,8 +579,9 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
         # make a new set of notes
         res_noise = torch.rand(1, g_input_size, device=device)
         _resgenerated, res_map, _resclass = generator(res_noise)
-        if plot_map:
-            plot_current_map(torch.tensor(res_map, dtype=torch.float32, device=device))
+        if plot_map:# plot map output
+            # plot_current_map(torch.tensor(res_map, dtype=torch.float32, device=device))
+            plot_current_map(res_map, extvar["begin"])
 
         # early return if found a good solution
         # good is (inside the map boundary)
@@ -538,11 +590,16 @@ def generate_set_pytorch(models, begin = 0, start_pos=[256, 192], group_id=-1, l
             if inblock_trueness(current_map[:, :, 0:2]).item() == 0 and inblock_trueness(current_map[:, :, 4:6]).item() == 0:
                 break
 
-    if plot_map:
-        for i in range(3): # from our testing, any random input generates nearly the same map
-            plot_noise = torch.rand(1, g_input_size, device=device)
-            _plotgenerated, plot_mapped, _plotclass = generator(plot_noise)
-            plot_current_map(torch.tensor(plot_mapped, dtype=torch.float32, device=device))
+    # if plot_map:
+    #     for i in range(3): # from our testing, any random input generates nearly the same map
+    #         plot_noise = torch.rand(1, g_input_size, device=device)
+    #         _plotgenerated, plot_mapped, _plotclass = generator(plot_noise)
+    #         plot_current_map(plot_mapped)
+
+    # beta save gan
+    # print("saving gan")
+    # torch.save(generator.state_dict(), "G_beta1.pth")
+    # torch.save(discriminator.state_dict(), "D_beta1.pth")
 
     return res_map.squeeze()
 

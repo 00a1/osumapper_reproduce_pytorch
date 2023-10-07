@@ -8,10 +8,10 @@ from timing import get_timing
 import re
 
 # pytorch
-# from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
+from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
 # tensorflow
-from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
+# from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
 from act_modding import step7_modding
 from act_final import step8_save_osu_file_gui
@@ -23,8 +23,8 @@ cmd_opts = parser.parse_args()
 
 def step1(models, map_file, audio_file, dist_multiplier, note_density, slider_favor, divisor_favor, slider_max_ticks):
     global model_params
-    # model_params = load_pretrained_model("torchtest")
-    model_params = load_pretrained_model(models)
+    model_params = load_pretrained_model("torchtest")
+    # model_params = load_pretrained_model(models)
 
     # step4_read_new_map(uploaded_osu_name)
     step4_read_new_map_gui(map_file.name, audio_file.name)
@@ -92,6 +92,66 @@ def step3(stream_regularizer, slider_mirror):
     # else:
     saved_osu_name = step8_save_osu_file_gui(osu_a, data)
     return saved_osu_name
+
+
+
+
+
+
+
+
+
+
+
+
+
+# from act_newmap_prep import step4_read_new_map_gui
+from mania_setup_colab import mania_load_pretrained_model
+# rename functions +
+from mania_act_rhythm_calc import mania_step5_load_model, mania_step5_load_npz, mania_step5_set_params, mania_step5_predict_notes, mania_step5_build_pattern, mania_modding, mania_merge_objects_each_key
+
+def mania_step1(models, map_file, audio_file, note_density, hold_favor, divisor_favor, hold_max_ticks, hold_min_return, rotate_mode):
+    global mania_notes_each_key
+    # select_model = "lowkey" = models
+    model_params = mania_load_pretrained_model(models)
+    step4_read_new_map_gui(map_file.name, audio_file.name)
+    # step4_read_new_map(uploaded_osu_name)
+    
+
+    model = mania_step5_load_model(model_file=model_params["rhythm_model"])
+    npz = mania_step5_load_npz()
+    # params = model_params["rhythm_param"]
+    # Or set the parameters here...
+    params = mania_step5_set_params(note_density=float(note_density), hold_favor=float(hold_favor), divisor_favor=[divisor_favor] * 4, hold_max_ticks=int(hold_max_ticks), hold_min_return=int(hold_min_return), rotate_mode=int(rotate_mode))
+    
+    predictions = mania_step5_predict_notes(model, npz, params)
+    mania_notes_each_key = mania_step5_build_pattern(predictions, params, pattern_dataset=model_params["pattern_dataset"])
+    return "{} notes predicted.".format(np.sum(predictions[0]))
+
+
+from mania_act_final import step8_save_osu_mania_file
+def mania_step2(key_fix):
+    global mania_notes_each_key
+    # modding_params = model_params["modding"]
+    modding_params = {
+        "key_fix" : int(key_fix)
+    }
+    
+    notes_each_key = mania_modding(mania_notes_each_key, modding_params)
+    notes, key_count = mania_merge_objects_each_key(notes_each_key)
+    saved_osu_name = step8_save_osu_mania_file(notes, key_count)
+    return saved_osu_name
+
+
+
+
+
+
+
+
+
+
+
 
 def get_timed_osu_file(mode, audio_file, artist, title, beatmap_creator, difficulty_name, hp, cs, ar, od, sv, sltira, input_filename = "assets/my_template.osu", output_filename = "timing.osu"):
     with open(input_filename) as osu_file:
@@ -226,7 +286,8 @@ with gr.Blocks(title="WebUI") as app:
                         c_randfalse_batch = gr.Slider(minimum=0, maximum=1000, value=5, label="c_randfalse_batch", interactive=True)
                 butstep2 = gr.Button("step2", variant="primary")
             with gr.Row():
-                output2 = gr.Textbox(label="Output information")
+                output2 = gr.Textbox(label="Output information", scale=0)
+                # gr.Image(value="graph0.png")
             butstep2.click(step2, [good_epoch, max_epoch, note_distance_basis, max_ticks_for_ds, next_from_slider_end, box_loss_border, box_loss_value, box_loss_weight, g_epochs, g_batch, g_input_size, c_epochs, c_true_batch, c_false_batch, c_randfalse_batch], [output2], api_name="gan")
             with gr.Row():
                 with gr.Column():
@@ -238,7 +299,32 @@ with gr.Blocks(title="WebUI") as app:
             # with gr.Row():
             #     butstep3 = gr.Button("clean up", variant="primary")
         # with gr.TabItem("taiko"):
-        # with gr.TabItem("mania"):
+
+
+        with gr.TabItem("mania"):
+            models = gr.Radio(label="models", choices=["default", "lowkey", "highkey"], value="default", interactive=True)
+            with gr.Row():
+                map_file = gr.File(label="Drop your Map file here")
+                audio_file = gr.File(label="Drop your Audio file here")
+                with gr.Column():
+                    note_density = gr.Slider(minimum=0, maximum=1, value=0.55, label="note_density", interactive=True)
+                    hold_favor = gr.Slider(minimum=-1, maximum=1, value=0.12, label="hold_favor", interactive=True)
+                    divisor_favor = gr.Slider(minimum=-1, maximum=1, value=0, label="divisor_favor", interactive=True)
+                    hold_max_ticks = gr.Slider(minimum=1, maximum=1000, value=8, label="hold_max_ticks", interactive=True)
+                    hold_min_return = gr.Slider(minimum=1, maximum=1000, value=5, label="hold_min_return", interactive=True)
+                    rotate_mode = gr.Slider(minimum=0, maximum=4, step=1, value=4, label="rotate_mode", interactive=True)
+                mania_butstep1 = gr.Button("step1", variant="primary")
+            with gr.Row():
+                output1 = gr.Textbox(label="Output information")
+            mania_butstep1.click(mania_step1, [models, map_file, audio_file, note_density, hold_favor, divisor_favor, hold_max_ticks, hold_min_return, rotate_mode], [output1], api_name="mania_convert")
+            with gr.Row():
+                with gr.Column():
+                    key_fix = gr.Slider(minimum=0, maximum=3, step=1, value=1, label="key_fix", interactive=True)
+                mania_butstep2 = gr.Button("step2", variant="primary")
+                file_out = gr.File(interactive=False, label="map file output")
+                mania_butstep2.click(mania_step2, [key_fix], [file_out], api_name="mania_mod")
+
+        
         # with gr.TabItem("catch"):
         with gr.TabItem("empty .osu file maker"):
             # with gr.Row():
