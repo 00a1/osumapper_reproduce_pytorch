@@ -8,10 +8,10 @@ from timing import get_timing
 import re
 
 # pytorch
-from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
+# from act_rhythm_calc_torch_clean import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
 # tensorflow
-# from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
+from act_rhythm_calc import step5_load_model, step5_load_npz, step5_predict_notes, step5_convert_sliders, step5_save_predictions, step5_set_params
 
 from act_modding import step7_modding
 from act_final import step8_save_osu_file_gui
@@ -23,8 +23,8 @@ cmd_opts = parser.parse_args()
 
 def step1(models, map_file, audio_file, dist_multiplier, note_density, slider_favor, divisor_favor, slider_max_ticks):
     global model_params
-    model_params = load_pretrained_model("torchtest")
-    # model_params = load_pretrained_model(models)
+    # model_params = load_pretrained_model("torchtest")
+    model_params = load_pretrained_model(models)
 
     # step4_read_new_map(uploaded_osu_name)
     step4_read_new_map_gui(map_file.name, audio_file.name)
@@ -129,7 +129,7 @@ def mania_step1(models, map_file, audio_file, note_density, hold_favor, divisor_
     return "{} notes predicted.".format(np.sum(predictions[0]))
 
 
-from mania_act_final import step8_save_osu_mania_file
+from mania_act_final import step8_save_osu_mania_file_gui
 def mania_step2(key_fix):
     global mania_notes_each_key
     # modding_params = model_params["modding"]
@@ -139,7 +139,7 @@ def mania_step2(key_fix):
     
     notes_each_key = mania_modding(mania_notes_each_key, modding_params)
     notes, key_count = mania_merge_objects_each_key(notes_each_key)
-    saved_osu_name = step8_save_osu_mania_file(notes, key_count)
+    saved_osu_name = step8_save_osu_mania_file_gui(notes, key_count)
     return saved_osu_name
 
 
@@ -302,7 +302,7 @@ with gr.Blocks(title="WebUI") as app:
 
 
         with gr.TabItem("mania"):
-            models = gr.Radio(label="models", choices=["default", "lowkey", "highkey"], value="default", interactive=True)
+            models = gr.Radio(label="models", choices=["lowkey", "highkey"], value="lowkey", interactive=True)# no model for "default"
             with gr.Row():
                 map_file = gr.File(label="Drop your Map file here")
                 audio_file = gr.File(label="Drop your Audio file here")
