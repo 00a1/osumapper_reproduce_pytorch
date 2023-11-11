@@ -1,7 +1,9 @@
 import gradio as gr
 import argparse
 from setup_colab import load_pretrained_model
-from act_gan_torch_clean import step6_set_gan_params, step6_run_all
+from act_gan_torch_clean import step6_set_gan_params, step6_run_all #old
+# from act_gan_torch_clean_v2_try3 import step6_set_gan_params, step6_run_all #cnn
+from act_wgan_gp_torch_clean_v2_try6_infer import step6_set_gan_params_v2, step6_run_all_v2 #wgan-gp
 from act_newmap_prep import step4_read_new_map_gui
 import numpy as np
 from timing import get_timing
@@ -42,7 +44,7 @@ def step1(models, map_file, audio_file, dist_multiplier, note_density, slider_fa
     step5_save_predictions(converted)
     return "{} notes predicted.".format(np.sum(predictions[0]))
 
-def step2(good_epoch, max_epoch, note_distance_basis, max_ticks_for_ds, next_from_slider_end, box_loss_border, box_loss_value, box_loss_weight, g_epochs, g_batch, g_input_size, c_epochs, c_true_batch, c_false_batch, c_randfalse_batch):
+def step2(good_epoch, max_epoch, note_distance_basis, max_ticks_for_ds, next_from_slider_end, box_loss_border, box_loss_value, box_loss_weight, g_epochs, g_batch, g_input_size, c_epochs, c_true_batch, c_false_batch, c_randfalse_batch, version19):
     global osu_a, data
 
     if next_from_slider_end == "False":
@@ -69,9 +71,13 @@ def step2(good_epoch, max_epoch, note_distance_basis, max_ticks_for_ds, next_fro
         "box_loss_value" : float(box_loss_value),
         "box_loss_weight" : int(box_loss_weight)
     }
-    
-    step6_set_gan_params(GAN_PARAMS)
-    osu_a, data = step6_run_all(flow_dataset_npz=model_params["flow_dataset"])
+
+    if version19 == "v2":
+        step6_set_gan_params_v2(GAN_PARAMS)
+        osu_a, data = step6_run_all_v2(flow_dataset_npz=model_params["flow_dataset"], flow_model=model_params["flow_model"])
+    else:
+        step6_set_gan_params(GAN_PARAMS)
+        osu_a, data = step6_run_all(flow_dataset_npz=model_params["flow_dataset"])
     
     return "Success"
 
@@ -247,6 +253,10 @@ def get_timed_osu_file_mania(audio_file, artist, title, beatmap_creator, difficu
 
     return output_filename
 
+
+
+
+
 with gr.Blocks(title="WebUI") as app:
     gr.Markdown(value="sota Sota Fujimori music(☆>5.0) vtuber(☆4.0-5.3) inst(☆3.5-6.5) tvsize(☆3.5-5.0 BPM140-190) hard(☆<3.5 BPM140-190) normal(☆<2.7 BPM140-190) lowbpm(☆3-4.5 BPM<140) taiko experimental(☆3-6) catch experimental(☆3-6) mytf8star(☆8)")
     with gr.Tabs():
@@ -266,6 +276,7 @@ with gr.Blocks(title="WebUI") as app:
                 output1 = gr.Textbox(label="Output information")
             butstep1.click(step1, [models, map_file, audio_file, dist_multiplier, note_density, slider_favor, divisor_favor, slider_max_ticks], [output1], api_name="convert")
             with gr.Row():
+                version19 = gr.Radio(label="Version", choices=["v1", "v2"], value="v2", interactive=True, visible=True)
                 good_epoch = gr.Slider(minimum=0, maximum=1000, value=6, label="good_epoch", interactive=True)
                 max_epoch = gr.Slider(minimum=0, maximum=1000, value=25, label="max_epoch", interactive=True)
                 note_distance_basis = gr.Slider(minimum=0, maximum=1000, value=200, step=10, label="note_distance_basis", interactive=True)
@@ -285,10 +296,15 @@ with gr.Blocks(title="WebUI") as app:
                         c_false_batch = gr.Slider(minimum=0, maximum=1000, value=5, label="c_false_batch", interactive=True)
                         c_randfalse_batch = gr.Slider(minimum=0, maximum=1000, value=5, label="c_randfalse_batch", interactive=True)
                 butstep2 = gr.Button("step2", variant="primary")
+                # version19.change(
+                #         change_version19,
+                #         [version19],
+                #         [c_true_batch],
+                #     )#, _if_f0_3  pretrained_G14, pretrained_D15, , sr2 sr2, 
             with gr.Row():
                 output2 = gr.Textbox(label="Output information", scale=0)
                 # gr.Image(value="graph0.png")
-            butstep2.click(step2, [good_epoch, max_epoch, note_distance_basis, max_ticks_for_ds, next_from_slider_end, box_loss_border, box_loss_value, box_loss_weight, g_epochs, g_batch, g_input_size, c_epochs, c_true_batch, c_false_batch, c_randfalse_batch], [output2], api_name="gan")
+            butstep2.click(step2, [good_epoch, max_epoch, note_distance_basis, max_ticks_for_ds, next_from_slider_end, box_loss_border, box_loss_value, box_loss_weight, g_epochs, g_batch, g_input_size, c_epochs, c_true_batch, c_false_batch, c_randfalse_batch, version19], [output2], api_name="gan")
             with gr.Row():
                 with gr.Column():
                     stream_regularizer = gr.Slider(minimum=0, maximum=4, step=1, value=1, label="stream_regularizer", interactive=True)
