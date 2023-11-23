@@ -23,6 +23,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--colab", action="store_true", help="Launch in colab")
 cmd_opts = parser.parse_args()
 
+from get_pp.gui_calc_clean import calc_metrics
+
 def step1(models, map_file, audio_file, dist_multiplier, note_density, slider_favor, divisor_favor, slider_max_ticks):
     global model_params
     # model_params = load_pretrained_model("torchtest")
@@ -97,7 +99,11 @@ def step3(stream_regularizer, slider_mirror):
         # saved_osu_name = step8_save_osu_file(osu_a, data, hitsounds=hitsounds)
     # else:
     saved_osu_name = step8_save_osu_file_gui(osu_a, data)
-    return saved_osu_name
+    #step8_save_osu_file_gui_pp_test(osu_a, data)
+    # Stars, Performance = calc_metrics(osu_a, data)
+    # stars, performance = calc_metrics(saved_osu_name)# fix to not use files
+    stars, performance = calc_metrics(osu_a, data)# The fix!!! :O
+    return saved_osu_name, stars, performance
 
 
 
@@ -311,7 +317,9 @@ with gr.Blocks(title="WebUI") as app:
                     slider_mirror = gr.Slider(minimum=0, maximum=1, step=1, value=1, label="slider_mirror", interactive=True)
                 butstep3 = gr.Button("step3", variant="primary")
                 file_out = gr.File(interactive=False, label="map file output")
-                butstep3.click(step3, [stream_regularizer, slider_mirror], [file_out], api_name="mod")
+                stars = gr.Textbox(label="Stars", scale=0)
+                performance = gr.Textbox(label="Performance", scale=0)
+                butstep3.click(step3, [stream_regularizer, slider_mirror], [file_out, stars, performance], api_name="mod")
             # with gr.Row():
             #     butstep3 = gr.Button("clean up", variant="primary")
         # with gr.TabItem("taiko"):
