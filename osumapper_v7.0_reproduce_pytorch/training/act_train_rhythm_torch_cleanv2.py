@@ -369,7 +369,7 @@ def step2_train_model(model, PARAMS):
         train_labels3, val_labels3 = new_train_labels[val_size:], new_train_labels[:val_size]
 
         train_dataset = TensorDataset(torch.tensor(train_data3, dtype=torch.float32, device=device), torch.tensor(train_div_data3, dtype=torch.float32, device=device), torch.tensor(train_labels3, dtype=torch.float32, device=device))
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=2)
 
         for epoch in tqdm(range(EPOCHS), desc="Epoch"):
             total_loss = 0.0
