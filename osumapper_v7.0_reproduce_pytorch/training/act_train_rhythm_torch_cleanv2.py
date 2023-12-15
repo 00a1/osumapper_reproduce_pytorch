@@ -336,6 +336,7 @@ def trysmallerbatch(model, PARAMS):
             print(loss.item())
             optimizer.step()
 
+import torch.autograd.profiler as profiler
 
 def step2_train_model(model, PARAMS):
     global new_train_data, new_div_data, new_train_labels, test_data, test_div_data, test_labels
@@ -372,45 +373,49 @@ def step2_train_model(model, PARAMS):
         train_dataset = TensorDataset(torch.tensor(train_data3, dtype=torch.float32, device=device), torch.tensor(train_div_data3, dtype=torch.float32, device=device), torch.tensor(train_labels3, dtype=torch.float32, device=device))
         train_loader = DataLoader(train_dataset, batch_size=batch_size)
 
-        for epoch in tqdm(range(EPOCHS), desc="Epoch"):
-            total_loss = 0.0
-            total_mae = 0.0
-            # for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
-            for batch in train_loader:
-                optimizer.zero_grad()
-                new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
-                outputs = model(new_train_data_batch, new_div_data_batch)
-                loss = criterion(outputs, new_train_labels_batch)
-                loss.backward()
-                total_loss += loss.item()
-                optimizer.step()
-
-                # Calculate batch MAE
-                batch_mae = torch.mean(torch.abs(outputs - new_train_labels_batch)).item()
-                total_mae += batch_mae
-            
-            if PARAMS["verbose"]:
-                print("loss: " + str(loss.item()))
-
-            epoch_loss = total_loss / batch_size
-            epoch_mae = total_mae / batch_size
-            history["epoch"].append(epoch)
-            history["train_loss"].append(epoch_loss)
-            # history["loss"].append(loss.item())
-            history["train_mae"].append(epoch_mae)
-
-            # Validation phase
-            with torch.no_grad():
-                val_outputs = model(torch.tensor(val_data3, dtype=torch.float32, device=device), torch.tensor(val_div_data3, dtype=torch.float32, device=device))
-                val_loss = criterion(val_outputs, torch.tensor(val_labels3, dtype=torch.float32, device=device))
-                # Calculate MAE
-                val_mae = torch.mean(torch.abs(val_outputs - torch.tensor(val_labels3, dtype=torch.float32, device=device)))
-                history["val_loss"].append(val_loss.item())
-                history["val_mae"].append(val_mae.item())
-
-            # Early stopping logic
-            if len(history["val_loss"]) > 20 and np.mean(history["val_loss"][-20:]) < min(history["val_loss"]):
-                break
+        with profiler.profile(record_shapes=True) as prof:
+            with profiler.record_function("training_loop"):
+                for epoch in tqdm(range(EPOCHS), desc="Epoch"):
+                    total_loss = 0.0
+                    total_mae = 0.0
+                    # for batch in tqdm(train_loader, desc="Batch", position=1, leave=True):
+                    for batch in train_loader:
+                        optimizer.zero_grad()
+                        new_train_data_batch, new_div_data_batch, new_train_labels_batch = batch
+                        outputs = model(new_train_data_batch, new_div_data_batch)
+                        loss = criterion(outputs, new_train_labels_batch)
+                        loss.backward()
+                        total_loss += loss.item()
+                        optimizer.step()
+                
+                        # Calculate batch MAE
+                        batch_mae = torch.mean(torch.abs(outputs - new_train_labels_batch)).item()
+                        total_mae += batch_mae
+                    
+                    if PARAMS["verbose"]:
+                        print("loss: " + str(loss.item()))
+                
+                    epoch_loss = total_loss / batch_size
+                    epoch_mae = total_mae / batch_size
+                    history["epoch"].append(epoch)
+                    history["train_loss"].append(epoch_loss)
+                    # history["loss"].append(loss.item())
+                    history["train_mae"].append(epoch_mae)
+                
+                    # Validation phase
+                    with torch.no_grad():
+                        val_outputs = model(torch.tensor(val_data3, dtype=torch.float32, device=device), torch.tensor(val_div_data3, dtype=torch.float32, device=device))
+                        val_loss = criterion(val_outputs, torch.tensor(val_labels3, dtype=torch.float32, device=device))
+                        # Calculate MAE
+                        val_mae = torch.mean(torch.abs(val_outputs - torch.tensor(val_labels3, dtype=torch.float32, device=device)))
+                        history["val_loss"].append(val_loss.item())
+                        history["val_mae"].append(val_mae.item())
+                
+                    # Early stopping logic
+                    if len(history["val_loss"]) > 20 and np.mean(history["val_loss"][-20:]) < min(history["val_loss"]):
+                        break
+        
+        print(prof.key_averages().table(sort_by="self_cpu_time_total", row_limit=10))
                 
         if PARAMS["plot_history"]:
             plot_history(history)
