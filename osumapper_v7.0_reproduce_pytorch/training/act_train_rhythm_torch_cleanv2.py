@@ -292,6 +292,10 @@ def trysmaller(model, PARAMS):
     new_train_data = torch.tensor(new_train_data, dtype=torch.float32, device=device)
     new_div_data = torch.tensor(new_div_data, dtype=torch.float32, device=device)
     new_train_labels = torch.tensor(new_train_labels, dtype=torch.float32, device=device)
+
+    gpu_memory = torch.cuda.get_device_properties(0).total_memory
+    train_batch_size = int((gpu_memory * 0.4) / (new_train_data.element_size() * new_train_data.nelement()))
+    print(train_batch_size)
     criterion = nn.MSELoss()
     optimizer = optim.RMSprop(model.parameters(), lr=0.001)
     EPOCHS = PARAMS["train_epochs"]
