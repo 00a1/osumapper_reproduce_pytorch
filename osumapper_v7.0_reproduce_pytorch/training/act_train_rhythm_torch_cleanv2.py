@@ -310,22 +310,21 @@ def trysmallerbatch(model, PARAMS):
     PARAMS = set_param_fallback(PARAMS)
     train_file_list = read_npz_list()
     data_split_count = PARAMS["data_split_count"]
-
-    for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)):
-        if map_batch == 0:
-            train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
-            (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
-        else:
-            new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
-        
-        new_train_data = torch.tensor(new_train_data, dtype=torch.float32, device=device)
-        new_div_data = torch.tensor(new_div_data, dtype=torch.float32, device=device)
-        new_train_labels = torch.tensor(new_train_labels, dtype=torch.float32, device=device)
-        criterion = nn.MSELoss()
-        optimizer = optim.RMSprop(model.parameters(), lr=0.001)
-        EPOCHS = PARAMS["train_epochs"]
-        
-        for _ in tqdm(range(EPOCHS), desc="Epoch"):
+    EPOCHS = PARAMS["train_epochs"]
+    criterion = nn.MSELoss()
+    optimizer = optim.RMSprop(model.parameters(), lr=0.001)
+    for _ in tqdm(range(EPOCHS), desc="Epoch"):
+        for map_batch in range(np.ceil(len(train_file_list) / data_split_count).astype(int)):
+            if map_batch == 0:
+                train_data2, div_data2, train_labels2 = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
+                (new_train_data, new_div_data, new_train_labels), (test_data, test_div_data, test_labels) = train_test_split(train_data2, div_data2, train_labels2)
+            else:
+                new_train_data, new_div_data, new_train_labels = read_some_npzs_and_preprocess(train_file_list[map_batch * data_split_count : (map_batch+1) * data_split_count])
+            
+            new_train_data = torch.tensor(new_train_data, dtype=torch.float32, device=device)
+            new_div_data = torch.tensor(new_div_data, dtype=torch.float32, device=device)
+            new_train_labels = torch.tensor(new_train_labels, dtype=torch.float32, device=device)
+            
             optimizer.zero_grad()
             outputs = model(new_train_data, new_div_data)
             loss = criterion(outputs, new_train_labels)
